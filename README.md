@@ -20,21 +20,58 @@ Two primary output files are produced for each the details and mergers respectiv
         'created' : Time of file creation.
         'simulation' : Illustris simulation number.
         'target_times' : The times (scale-factors) which were the targets for details entries
-        'num_entries' : The total number of details entries stored.
-        'num_blackholes' : The total number of unique BH with details entries.
+        'num_entries' : The total number of details entries stored `N`
+        'num_blackholes' : The total number of unique BH with details entries `M`
         'description' : A description of the data.
 
     'unique'
-        'id' : ID numbers of each unique BH
-        'first_index' : The index number (i.e. row) of the first entry for each unique BH
-        'num_entries' : The total number of entries for each unique BH
+        'id' : (M,) uint64 - ID numbers of each unique BH
+        'first_index' : (M,) int - The index number (i.e. row) of the first entry for each unique BH
+        'num_entries' : (M,) int - The total number of entries for each unique BH
 
-    'id' : ID number of the BH for each details entry
-    'time' : Time (cosmological scale-factor) for each entry.
-    'mass' : BH mass
-    'mdot' : BH mass accretion rate
-    'rho' : local gas density
-    'cs' : local gas sound-speed
+    'id' : (N,) uint64 - ID number of the BH for each details entry
+    'time' : (N,) float64 - Time (cosmological scale-factor) for each entry.
+    'mass' : (N,) float64 - BH mass
+    'mdot' : (N,) float64 - BH mass accretion rate
+    'rho' : (N,) float64 - local gas density
+    'cs' : (N,) float64 - local gas sound-speed
     ```
 
 -   Mergers: `ill-[N]_blackhole_mergers.hdf5` (for illustris simulation number `N`)
+    ```
+    'Header'
+        'script' : Filename of the generating script (`illbh.mergers.py`)
+        'script_version' : Internal version str of the script
+        'git_version' : Git commit SHA for the repository at time of file creation
+        'created' : Time of file creation
+        'simulation' : Illustris simulation number
+        'target_times' : The times (scale-factors) which were the targets for details entries
+        'num_mergers' : The total number of mergers stored
+        'num_blackholes' : The total number of unique BH participating in mergers
+        'description' : A description of the data
+        'unique_ids' : The ID numbers of all unique BH participating in mergers
+        
+    'tree' : Information describing the BH merger tree.  If one of the below events does not exist, 
+             the value in the array is '-1', NOTE: not zero.
+        'next' (N,) int - The index number of the next merger this remnant takes part in.
+        'prev_in' (N,) int - The index number of the previous merger this 'in' BH was part of.
+        'prev_out' (N,) int - The index number of the previous merger this 'out' BH was part of. 
+    
+    'details' : Information from the 'details' files for BH in each merger.  Details entries were
+                searched for trying to match the 'in' BH just before merger, and the 'out' BH both
+                just before, and just after merger.  This corresponds to the three 'columns' for
+                each entry 'row': [0: 'in-bef', 1: 'out-bef', 2: 'out-aft'].  Many of these details
+                were not found, in which case the array values are zero.
+        'time' (N,3) float64 - Time (scale-factor) for each entry
+        'mass' (N,3) float64 - BH mass
+        'mdot' (N,3) float64 - BH mass accretion rate
+        'rho' (N,3) float64 - local gas density
+        'cs' (N,3) float64 - local gas sound-speed
+    
+    'time' (N,) float64 - Time (scale-factor) for each merger event
+    'id_in' (N,) uint64 - ID number of the 'in' BH
+    'id_out' (N,) uint64 - ID number of the 'out' BH
+    'mass_in' (N,) float64 - mass of the 'in' BH (immediately preceding merger)
+    'mass_out' (N,) float64 - mass of the 'out' BH (immediately preceding merger)
+    'snapshot' (N,) int - Illustris output snapshot during which, or following, this merger event
+    ```
