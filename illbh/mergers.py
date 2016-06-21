@@ -266,6 +266,9 @@ def combine_mergers_with_details(run, verbose=True, output_dir=None):
     mdets_in_fname = GET_MERGERS_DETAILS_FILENAME(run, output_dir=output_dir)
     details_in_fname = GET_PUBLIC_DETAILS_FILENAME(run, output_dir=output_dir)
 
+    # Load scalefactor (time) for each snapshot (rounded)
+    snap_scales = constants.GET_SNAPSHOT_SCALES()
+
     # Load Everything
     # ---------------
 
@@ -356,8 +359,6 @@ def combine_mergers_with_details(run, verbose=True, output_dir=None):
         mtime = m_lbt[mm]
         dtime = d_lbt[mm]
         dmass = d_mass[mm]
-        # dscale = d_scale[mm]
-        # did = d_id[mm]
 
         # Build Merger Tree
         # -----------------
@@ -497,7 +498,6 @@ def combine_mergers_with_details(run, verbose=True, output_dir=None):
     mass_in = m_mass_in[val]
     mass_out = mass_out[val]
     # Merger-Details Data
-    # md_id = d_id[val, :]
     md_scale = d_scale[val, :]
     md_mass = d_mass[val, :]
     md_mdot = d_mdot[val, :]
@@ -511,6 +511,9 @@ def combine_mergers_with_details(run, verbose=True, output_dir=None):
     mq_ids = np.array(list(set(id_in).union(id_out)))
     num_mergers = scale.size
     num_unique = mq_ids.size
+
+    # Determine which snapshot each merger 'belongs' in
+    m_snaps = np.digitize(scale, snap_scales, right=True)
 
     # Produce Public Output File
     mergers_out_fname = GET_PUBLIC_MERGERS_FILENAME(run, output_dir=output_dir)
@@ -550,6 +553,9 @@ def combine_mergers_with_details(run, verbose=True, output_dir=None):
         mergers_out[MERGERS.ID_OUT] = id_out
         mergers_out[MERGERS.MASS_IN] = mass_in
         mergers_out[MERGERS.MASS_OUT] = mass_out
+
+        # Save mapping to snapshots
+        mergers_out[MERGERS.SNAPSHOT] = m_snaps
 
         # Save unique ID numbers
         mergers_out[MERGERS.UNIQUE] = mq_ids
