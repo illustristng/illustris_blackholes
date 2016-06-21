@@ -5,6 +5,7 @@
 -   Create intermediate files with lists of mergers/details files
 -   Checking that path structure exists (`_check_path`) shouldnt happen in 'constants.py' with name
     getter methods.
+-   Create variables in `MERGERS` and `DETAILS` for the Header parameters also.
 
 
 ## Current ##
