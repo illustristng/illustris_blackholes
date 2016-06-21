@@ -153,6 +153,7 @@ def GET_DETAILS_ORGANIZED_FILENAME(run, snap, type='txt', output_dir=None):
     output_dir = _get_output_dir(run, output_dir, append=_OUTPUT_DETAILS_ORGANIZED_DIR)
     use_fname = _OUTPUT_DETAILS_ORGANIZED_FILENAME.format(run, snap) + '.%s'.format(type)
     fname = os.path.join(output_dir, use_fname)
+    _check_path(fname)
     return fname
 
 
@@ -164,6 +165,7 @@ def GET_PUBLIC_DETAILS_FILENAME(run, output_dir=None):
     output_dir = _get_output_dir(run, output_dir, append=_OUTPUT_DETAILS_DIR)
     use_fname = _PUBLIC_DETAILS_FILENAME.format(run)
     fname = os.path.join(output_dir, use_fname)
+    _check_path(fname)
     return fname
 
 
@@ -179,6 +181,7 @@ def GET_MERGERS_COMBINED_FILENAME(run, filtered=False, type='txt', output_dir=No
         ending = 'raw'
     use_fname = _OUTPUT_MERGERS_COMBINED_FILENAME.format(run, ending, type)
     fname = os.path.join(output_dir, use_fname)
+    _check_path(fname)
     return fname
 
 
@@ -188,6 +191,7 @@ def GET_MERGERS_DETAILS_FILENAME(run, output_dir=None):
     output_dir = _get_output_dir(run, output_dir, append=_OUTPUT_MERGERS_DIR)
     use_fname = _OUTPUT_MERGERS_DETAILS_FILENAME.format(run)
     fname = os.path.join(output_dir, use_fname)
+    _check_path(fname)
     return fname
 
 
@@ -195,6 +199,7 @@ def GET_PUBLIC_MERGERS_FILENAME(run, output_dir=None):
     output_dir = _get_output_dir(run, output_dir, append=_OUTPUT_MERGERS_DIR)
     use_fname = _PUBLIC_MERGERS_FILENAME.format(run)
     fname = os.path.join(output_dir, use_fname)
+    _check_path(fname)
     return fname
 
 
@@ -259,7 +264,7 @@ def _zero_pad_end(arr, add_len):
     return np.pad(arr, (0, add_len), mode='constant', constant_values=0)
 
 
-def get_git():
+def _get_git():
     """Get a string representing the current git status --- i.e. tag and commit hash.
     """
     import subprocess
@@ -277,3 +282,12 @@ def _check_version(fname, vers):
         warnings.warn(str(err))
 
     return False
+
+
+def _check_path(fpath):
+    head, tail = os.path.split(os.path.abspath(fpath))
+    if not os.path.exists(head):
+        os.makedirs(head)
+    if not os.path.isdir(head):
+        raise RuntimeError("Path '{}' (from '{}') is invalid!".format(head, fpath))
+    return
