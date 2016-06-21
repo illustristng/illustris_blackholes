@@ -77,7 +77,7 @@ _OUTPUT_DETAILS_DIR = "blackholes/details/"
 _OUTPUT_DETAILS_ORGANIZED_DIR = os.path.join(_OUTPUT_DETAILS_DIR, "organized")
 _OUTPUT_MERGERS_DIR = "blackholes/mergers/"
 
-_OUTPUT_DETAILS_ORGANIZED_FILENAME = "ill-{:d}_blackhole_details_snap-{:03d}"
+_OUTPUT_DETAILS_ORGANIZED_FILENAME = "ill-{:d}_blackhole_details_snap-{:03d}.{:s}"
 _PUBLIC_DETAILS_FILENAME = "ill-{:d}_blackhole_details.hdf5"
 
 _OUTPUT_MERGERS_COMBINED_FILENAME = "ill-{:d}_blackhole_mergers_combined_{:s}.{:s}"
@@ -151,7 +151,7 @@ def GET_DETAILS_ORGANIZED_FILENAME(run, snap, type='txt', output_dir=None):
     """
     # Append: "blackholes/details/organized/"
     output_dir = _get_output_dir(run, output_dir, append=_OUTPUT_DETAILS_ORGANIZED_DIR)
-    use_fname = _OUTPUT_DETAILS_ORGANIZED_FILENAME.format(run, snap) + '.%s'.format(type)
+    use_fname = _OUTPUT_DETAILS_ORGANIZED_FILENAME.format(run, snap, type)
     fname = os.path.join(output_dir, use_fname)
     _check_path(fname)
     return fname
@@ -279,7 +279,7 @@ def _check_version(fname, vers):
         if file_vers == vers:
             return True
     except Exception as err:
-        warnings.warn(str(err))
+        warnings.warn("`_check_version`:" + str(err))
 
     return False
 
