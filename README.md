@@ -40,13 +40,13 @@ Two primary output files are produced for each the details and mergers respectiv
 
 -   Mergers: `ill-[N]_blackhole_mergers.hdf5` (for illustris simulation number `N`)
 
-    ```  
-    'Header'  
-        'script' : Filename of the generating script (`illbh.mergers.py`)  
-        'script_version' : Internal version str of the script  
-        'git_version' : Git commit SHA for the repository at time of file creation  
-        'created' : Time of file creation  
-        'simulation' : Illustris simulation number  
+    ```
+    'Header'
+        'script' : Filename of the generating script (`illbh.mergers.py`)
+        'script_version' : Internal version str of the script
+        'git_version' : Git commit SHA for the repository at time of file creation
+        'created' : Time of file creation
+        'simulation' : Illustris simulation number
         'target_times' : The times (scale-factors) which were the targets for details entries
         'num_mergers' : The total number of mergers stored
         'num_blackholes' : The total number of unique BH participating in mergers
