@@ -54,9 +54,6 @@ from illbh.constants import _all_exist, DETAILS, DTYPE, GET_DETAILS_ORGANIZED_FI
 
 __version__ = '1.0'
 
-# Precision when comparing between scale-factors
-_DEF_SCALE_PRECISION = -8
-
 # Size of initial Details arrays allocation; and 'chunk' size that it is increased by as needed
 _DETS_BUF_SIZE = int(1e7)
 
@@ -107,7 +104,7 @@ def organize_txt_by_snapshot(run, verbose=True, clean_overwrites=True, output_di
         Use a simple method to clean-up duplicate details entries (see 'Notes' above).
 
     """
-    # Load scalefactor (time) for each snapshot
+    # Load scalefactor (time) for each snapshot (rounded)
     snap_scales = GET_SNAPSHOT_SCALES()
 
     # Output filenames, one per snapshot (even if empty---i.e. no blackholes)
@@ -170,13 +167,10 @@ def organize_txt_by_snapshot(run, verbose=True, clean_overwrites=True, output_di
         if not raw_lines.size or not raw_scales.size:
             continue
 
-        # Round snapshot scales to desired precision
-        round_scales = np.around(snap_scales, -_DEF_SCALE_PRECISION)
-
         # Find snapshots following each entry (right-edge) or equal (include right: 'right=True')
         #    Each row of `snap_bins` corresponds to a details entry, and includes the snapshot in
         #    which it belongs.
-        snap_bins = np.digitize(raw_scales, round_scales, right=True)
+        snap_bins = np.digitize(raw_scales, snap_scales, right=True)
 
         # For each Snapshot, write appropriate lines
         for jj in range(num_org):
@@ -1064,75 +1058,6 @@ def _trim_details_arrays(trim, id, scale, mass, mdot, rho, cs):
     rho   = rho[:trim]
     cs    = cs[:trim]
     return id, scale, mass, mdot, rho, cs
-
-
-'''
-def loadBHDetails(run, snap, loadsave=True, verbose=True):
-    """Load Blackhole Details dictionary for the given snapshot.
-
-    If the file does not already exist, it is recreated from the temporary ASCII files, or directly
-    from the raw illustris ASCII files as needed.
-
-    Arguments
-    ---------
-        run     : <int>, illustris simulation number {1, 3}
-        snap    : <int>, illustris snapshot number {0, 135}
-        loadsave <bool> :
-        verbose  <bool> : print verbose output
-
-    Returns
-    -------
-        dets    : <dict>, BHDetails dictionary object for target snapshot
-
-    """
-    if verbose: print(" - - BHDetails.loadBHDetails")
-
-    detsName = BHConstants.GET_DETAILS_SAVE_FILENAME(run, snap, VERSION)
-
-    # Load Existing Save File
-    if(loadsave):
-        if verbose: print((" - - - Loading details from '%s'" % (detsName)))
-        if(os.path.exists(detsName)):
-            dets = zio.npzToDict(detsName)
-        else:
-            loadsave = False
-            warnStr = "%s does not exist!" % (detsName)
-            warnings.warn(warnStr, RuntimeWarning)
-
-    # If file does not exist, or is wrong version, recreate it
-    if(not loadsave):
-        if verbose: print(" - - - Re-converting details")
-        # Convert ASCII to NPZ
-        saveFile = _convertDetailsASCIItoNPZ_snapshot(run, snap, loadsave=True, verbose=verbose)
-        # Load details from newly created save file
-        dets = zio.npzToDict(saveFile)
-
-    return dets
-'''
-
-'''
-def _getPrecision(args):
-    """Estimate the precision needed to differenciate between elements of an array
-    """
-    diffs = np.fabs(np.diff(sorted(args)))
-    inds  = np.nonzero(diffs)
-    if len(inds) > 0:
-        minDiff = np.min(diffs[inds])
-    else:
-        minDiff = np.power(10.0, _DEF_SCALE_PRECISION)
-    order = int(np.log10(0.49*minDiff))
-    return order
-'''
-
-'''
-def get_out_dir(run, output_dir=None):
-    """
-    /n/home00/lkelley/ghernquistfs1/illustris/data/%s/blackhole/details/
-    """
-    if output_dir is None:
-        output_dir = os.path.join(_PROCESSED_DIR % (_ILLUSTRIS_RUN_NAMES[run]), _DEF_OUTPUT_DIR, '')
-    return output_dir
-'''
 
 
 def _check_version(fname):
