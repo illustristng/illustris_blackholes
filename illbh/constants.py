@@ -85,6 +85,9 @@ _OUTPUT_MERGERS_DETAILS_FILENAME = "ill-{:d}_blackhole_merger_details.hdf5"
 
 _PUBLIC_MERGERS_FILENAME = "ill-{:d}_blackhole_mergers.hdf5"
 
+# Precision when comparing between scale-factors
+_DEF_SCALE_PRECISION = -8
+
 
 class DTYPE:
     ID     = np.uint64
@@ -111,6 +114,7 @@ class MERGERS:
     ID_OUT = 'id_out'
     MASS_IN = 'mass_in'
     MASS_OUT = 'mass_out'
+    SNAPSHOT = 'snapshot'
 
     _TREE = 'tree'
     NEXT = 'tree/next'
@@ -224,12 +228,18 @@ def GET_ILLUSTRIS_BH_MERGERS_FILENAMES(run):
     return files
 
 
-def GET_SNAPSHOT_SCALES():
+def GET_SNAPSHOT_SCALES(round=True):
     fname = str(_SNAPSHOT_COSMOLOGY_DATA_FILENAME)
     if not os.path.isfile(fname):
         raise ValueError("Snapshot scales file '{}' is invalid".format(fname))
     data = np.load(fname)
-    return data['scale']
+
+    # Load scalefactor (time) for each snapshot
+    snap_scales = data['scale']
+    # Round snapshot scales to desired precision
+    if round:
+        snap_scales = np.around(snap_scales, -_DEF_SCALE_PRECISION)
+    return snap_scales
 
 
 def GET_SUBBOX_TIMES(run):
