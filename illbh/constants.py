@@ -1,10 +1,11 @@
 """
 """
-# from collections import namedtuple
 from glob import glob
+import h5py
 import numpy as np
 import os
 import shutil
+import warnings
 
 NUM_SNAPS = 136
 
@@ -67,21 +68,20 @@ _ILLUSTRIS_RUN_NAMES   = {1: "L75n1820FP",
                           3: "L75n455FP"}
 
 _ILLUSTRIS_SUBBOX_TIMES_FILENAMES = \
-    "/n/ghernquist/Illustris/Runs/%s/postprocessing/subboxes_times.txt"
+    "/n/ghernquist/Illustris/Runs/{:s}/postprocessing/subboxes_times.txt"
 
 _SNAPSHOT_COSMOLOGY_DATA_FILENAME = "illustris-snapshot-cosmology-data.npz"
 
-_OUTPUT_DIR = "/n/home00/lkelley/ghernquistfs1/illustris/data/%s/"
-_OUTPUT_DETAILS_DIR = os.path.join(_OUTPUT_DIR, "blackholes/details/")
+_ROOT_OUTPUT_DIR = "/n/home00/lkelley/ghernquistfs1/illustris/data/{:s}/"
+_OUTPUT_DETAILS_DIR = "blackholes/details/"
 _OUTPUT_DETAILS_ORGANIZED_DIR = os.path.join(_OUTPUT_DETAILS_DIR, "organized")
-_OUTPUT_DETAILS_ORGANIZED_FILENAME = "ill-%d_blackhole_details_snap-%03d"
-_OUTPUT_DETAILS_FILENAME = "ill-%d_blackhole_details.hdf5"
+_OUTPUT_MERGERS_DIR = "blackholes/mergers/"
 
-_OUTPUT_MERGERS_DIR = os.path.join(_OUTPUT_DIR, "blackholes/mergers/")
+_OUTPUT_DETAILS_ORGANIZED_FILENAME = "ill-{:d}_blackhole_details_snap-{:03d}"
+_PUBLIC_DETAILS_FILENAME = "ill-{:d}_blackhole_details.hdf5"
 
 _OUTPUT_MERGERS_COMBINED_FILENAME = "ill-{:d}_blackhole_mergers_combined_{:s}.{:s}"
-# _OUTPUT_MERGERS_RAW_FILENAME_INTERMEDIATE = "ill-%d_blackhole_mergers_raw.txt"
-_OUTPUT_MERGERS_DETAILS_FILENAME = "ill-%d_blackhole_merger_details.hdf5"
+_OUTPUT_MERGERS_DETAILS_FILENAME = "ill-{:d}_blackhole_merger_details.hdf5"
 
 _PUBLIC_MERGERS_FILENAME = "ill-{:d}_blackhole_mergers.hdf5"
 
@@ -90,10 +90,6 @@ class DTYPE:
     ID     = np.uint64
     SCALAR = np.float64
     INDEX  = np.int64
-
-# class BH_TYPE:
-#     IN  = 0
-#     OUT = 1
 
 
 class DETAILS:
@@ -135,75 +131,75 @@ def _all_exist(files):
     retval = all([os.path.exists(fil) for fil in files])
     return retval
 
-'''
-def GET_PROCESSED_DIR(run):
+
+def _get_output_dir(run, output_dir, append=None):
     """
-    _ILLUSTRIS_RUN_NAMES   = {1: "L75n1820FP",
-                              2: "L75n910FP",
-                              3: "L75n455FP"}
-    _PROCESSED_DIR = "/n/home00/lkelley/ghernquistfs1/illustris/data/%s/output/postprocessing/"
+    /n/home00/lkelley/ghernquistfs1/illustris/data/{:s}/
+    /n/home00/lkelley/ghernquistfs1/illustris/data/L75n1820FP/
     """
-    return _PROCESSED_DIR % (_ILLUSTRIS_RUN_NAMES[run])
-'''
+    if output_dir is None:
+        output_dir = _ROOT_OUTPUT_DIR.format(_ILLUSTRIS_RUN_NAMES[run])
+    if append is not None:
+        output_dir = os.path.join(output_dir, append, '')
+    return output_dir
 
 
-def GET_DETAILS_ORGANIZED_FILENAME(run, snap, type='txt'):
+def GET_DETAILS_ORGANIZED_FILENAME(run, snap, type='txt', output_dir=None):
     """
     /n/home00/lkelley/ghernquistfs1/illustris/data/%s/blackhole/details/organized/
         ill-%d_blackhole_details_temp_snap-%d.%s
     """
-    use_dir = _OUTPUT_DETAILS_ORGANIZED_DIR % (_ILLUSTRIS_RUN_NAMES[run])
-    use_fname = _OUTPUT_DETAILS_ORGANIZED_FILENAME % (run, snap) + '.%s' % format(type)
-    fname = os.path.join(use_dir, use_fname)
+    # Append: "blackholes/details/organized/"
+    output_dir = _get_output_dir(run, output_dir, append=_OUTPUT_DETAILS_ORGANIZED_DIR)
+    use_fname = _OUTPUT_DETAILS_ORGANIZED_FILENAME.format(run, snap) + '.%s'.format(type)
+    fname = os.path.join(output_dir, use_fname)
     return fname
 
 
-def GET_OUTPUT_DETAILS_FILENAME(run):
+def GET_PUBLIC_DETAILS_FILENAME(run, output_dir=None):
     """
     /n/home00/lkelley/ghernquistfs1/illustris/data/%s/blackhole/details/organized/
         "ill-%d_blackhole_details.hdf5"
     """
-    use_dir = _OUTPUT_DETAILS_ORGANIZED_DIR % (_ILLUSTRIS_RUN_NAMES[run])
-    use_fname = _OUTPUT_DETAILS_FILENAME % (run)
-    fname = os.path.join(use_dir, use_fname)
+    output_dir = _get_output_dir(run, output_dir, append=_OUTPUT_DETAILS_DIR)
+    use_fname = _PUBLIC_DETAILS_FILENAME.format(run)
+    fname = os.path.join(output_dir, use_fname)
     return fname
 
 
-def GET_MERGERS_COMBINED_FILENAME(run, filtered=False, type='txt'):
+def GET_MERGERS_COMBINED_FILENAME(run, filtered=False, type='txt', output_dir=None):
     """
     /n/home00/lkelley/ghernquistfs1/illustris/data/%s/blackhole/mergers/
         ill-%d_blackhole_mergers_combined_{:s}.{:.s}
     """
-    use_dir = _OUTPUT_MERGERS_DIR % (_ILLUSTRIS_RUN_NAMES[run])
+    output_dir = _get_output_dir(run, output_dir, append=_OUTPUT_MERGERS_DIR)
     if filtered:
         ending = 'filtered'
     else:
         ending = 'raw'
     use_fname = _OUTPUT_MERGERS_COMBINED_FILENAME.format(run, ending, type)
-    fname = os.path.join(use_dir, use_fname)
+    fname = os.path.join(output_dir, use_fname)
     return fname
 
 
-def GET_MERGERS_DETAILS_FILENAME(run):
+def GET_MERGERS_DETAILS_FILENAME(run, output_dir=None):
     """
     """
-    use_dir = _OUTPUT_MERGERS_DIR % (_ILLUSTRIS_RUN_NAMES[run])
-    use_fname = _OUTPUT_MERGERS_DETAILS_FILENAME % (run)
-    fname = os.path.join(use_dir, use_fname)
+    output_dir = _get_output_dir(run, output_dir, append=_OUTPUT_MERGERS_DIR)
+    use_fname = _OUTPUT_MERGERS_DETAILS_FILENAME.format(run)
+    fname = os.path.join(output_dir, use_fname)
     return fname
 
 
-def GET_PUBLIC_MERGERS_FILENAME(run):
-    use_dir = _OUTPUT_MERGERS_DIR % (_ILLUSTRIS_RUN_NAMES[run])
+def GET_PUBLIC_MERGERS_FILENAME(run, output_dir=None):
+    output_dir = _get_output_dir(run, output_dir, append=_OUTPUT_MERGERS_DIR)
     use_fname = _PUBLIC_MERGERS_FILENAME.format(run)
-    fname = os.path.join(use_dir, use_fname)
+    fname = os.path.join(output_dir, use_fname)
     return fname
 
 
 def GET_ILLUSTRIS_BH_DETAILS_FILENAMES(run):
-    file_paths = _ILLUSTRIS_DETAILS_DIRS[run]
-    file_paths = np.atleast_1d(file_paths)
-
+    file_paths = np.atleast_1d(_ILLUSTRIS_DETAILS_DIRS[run])
     det_files = []
     for fdir in file_paths:
         file_regex = os.path.join(fdir, _ILLUSTRIS_DETAILS_FILENAME_REGEX)
@@ -233,7 +229,7 @@ def GET_SNAPSHOT_SCALES():
 
 def GET_SUBBOX_TIMES(run):
     # /n/ghernquist/Illustris/Runs/%s/postprocessing/subboxes_times.txt
-    times_fname = _ILLUSTRIS_SUBBOX_TIMES_FILENAMES % _ILLUSTRIS_RUN_NAMES[run]
+    times_fname = _ILLUSTRIS_SUBBOX_TIMES_FILENAMES.format(_ILLUSTRIS_RUN_NAMES[run])
     if not os.path.isfile(times_fname):
         raise ValueError("Subbox times file '{}' does not exist.".format(times_fname))
 
@@ -261,3 +257,23 @@ def _backup_exists(fname, verbose=True, append='.bak'):
 
 def _zero_pad_end(arr, add_len):
     return np.pad(arr, (0, add_len), mode='constant', constant_values=0)
+
+
+def get_git():
+    """Get a string representing the current git status --- i.e. tag and commit hash.
+    """
+    import subprocess
+    git_vers = subprocess.getoutput(["git describe --always"]).strip()
+    return git_vers
+
+
+def _check_version(fname, vers):
+    try:
+        with h5py.File(fname, 'r') as h5file:
+            file_vers = h5file['Header'].attrs['script_version']
+        if file_vers == vers:
+            return True
+    except Exception as err:
+        warnings.warn(str(err))
+
+    return False
