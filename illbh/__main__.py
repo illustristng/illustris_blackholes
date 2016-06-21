@@ -5,7 +5,7 @@ from datetime import datetime
 import numpy as np
 import os
 import warnings
-from . import constants
+from illbh import constants
 from . import details
 from . import mergers
 
@@ -26,7 +26,7 @@ def main():
 
     # Say Hello
     if args.verbose:
-        git_vers = constants.get_git()
+        git_vers = constants._get_git()
         title_str = "Illustris Black Holes Module, version: {}".format(git_vers)
         print("\n\n{}\n{}\n{}\n".format(title_str, '='*len(title_str), beg_time.ctime()))
     print("Output directory: '{}'".format(output_dir))

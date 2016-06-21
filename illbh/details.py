@@ -45,8 +45,9 @@ import shutil
 # import sys
 import warnings
 
-from . import constants
-from constants import _all_exist, DETAILS, DTYPE, GET_DETAILS_ORGANIZED_FILENAME, \
+# from . import constants
+from illbh import constants
+from illbh.constants import _all_exist, DETAILS, DTYPE, GET_DETAILS_ORGANIZED_FILENAME, \
     GET_ILLUSTRIS_BH_DETAILS_FILENAMES, GET_MERGERS_DETAILS_FILENAME, \
     GET_MERGERS_COMBINED_FILENAME, \
     GET_PUBLIC_DETAILS_FILENAME, GET_SNAPSHOT_SCALES, GET_SUBBOX_TIMES, MERGERS, NUM_SNAPS
@@ -229,7 +230,7 @@ def convert_txt_to_hdf5(run, verbose=True, output_dir=None):
 
     """
     print(" - Converting files from 'txt' to 'hdf5'")
-    git_vers = constants.get_git()
+    git_vers = constants._get_git()
     # Input filenames for organized 'txt' files
     input_fnames = [GET_DETAILS_ORGANIZED_FILENAME(run, snap, type='txt', output_dir=output_dir)
                     for snap in range(NUM_SNAPS)]
@@ -328,7 +329,7 @@ def combine_downsample_and_mergers_hdf5(run, verbose=True, error_in_aft=False, o
 
     """
     print(" - Combining and down-sampling details and identifying merger-related entries.")
-    git_vers = constants.get_git()
+    git_vers = constants._get_git()
     # Input hdf5 detaisl filenames
     input_fnames = [GET_DETAILS_ORGANIZED_FILENAME(run, snap, type='hdf5', output_dir=output_dir)
                     for snap in range(NUM_SNAPS)]
