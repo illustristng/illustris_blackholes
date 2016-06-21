@@ -1,6 +1,7 @@
 # Illustris Black Holes Post-Processing Module #
 
 This module compiles and processes the raw black hole (BH) output files from the Illustris simulations, and converts them into publicly usable HDF5 files.  The two primary types of BH output from the illustris simulation are 'details' and 'mergers' files:  
+
 -   'details' : handled by `illbh.details.py`  
     -    These files contain the output from each BH particle active in the simulation at each integration time-step.  
     -    The parameters included are 'ID, time, mass, mdot, rho, cs' which are the BH's unique ID number, the time the entry was recorded (in cosmological scale-factor), the mass of the BH particles, the mass-accretion rate of the particle, the local gas density ('rho'), and the local gas sound-speed ('cs').  
@@ -10,7 +11,8 @@ This module compiles and processes the raw black hole (BH) output files from the
 
 ### Public Output Files ###
 
-Two primary output files are produced for each the details and mergers respectively.
+Two primary output files are produced for each the details and mergers respectively.  
+
 -   Details: `ill-[N]_blackhole_details.hdf5` (for illustris simulation number `N`)
 
     ```
