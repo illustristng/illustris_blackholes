@@ -12,6 +12,7 @@ This module compiles and processes the raw black hole (BH) output files from the
 
 Two primary output files are produced for each the details and mergers respectively.
 -   Details: `ill-[N]_blackhole_details.hdf5` (for illustris simulation number `N`)
+
     ```
     'Header'
         'script' : Filename of the generating script (`illbh.details.py`)
@@ -38,6 +39,7 @@ Two primary output files are produced for each the details and mergers respectiv
     ```
 
 -   Mergers: `ill-[N]_blackhole_mergers.hdf5` (for illustris simulation number `N`)
+
     ```  
     'Header'  
         'script' : Filename of the generating script (`illbh.mergers.py`)  
