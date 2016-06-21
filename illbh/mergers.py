@@ -54,9 +54,10 @@ import os
 import shutil
 import warnings
 
+from . import constants
 from constants import DETAILS, DTYPE, \
     GET_ILLUSTRIS_BH_MERGERS_FILENAMES, GET_MERGERS_COMBINED_FILENAME, \
-    GET_MERGERS_DETAILS_FILENAME, GET_OUTPUT_DETAILS_FILENAME, \
+    GET_MERGERS_DETAILS_FILENAME, GET_PUBLIC_DETAILS_FILENAME, \
     GET_PUBLIC_MERGERS_FILENAME, MERGERS, \
     _backup_exists, _zero_pad_end
 
@@ -86,18 +87,7 @@ __version__ = '1.0.1'
 _MERGS_BUF_SIZE = int(1e5)
 
 
-def main(run=1, output_dir=None, verbose=True, ):
-    # Load Mapped Mergers ###
-    # re-creates them if needed
-    # mergersMapped = loadMappedMergers(run, verbose=verbose)
-
-    # Load Fixed Mergers ###
-    # mergersFixed = loadFixedMergers(run, verbose=verbose)
-
-    return
-
-
-def combine_raw_merger_files(run, verbose=True):
+def combine_raw_merger_files(run, verbose=True, output_dir=None):
     """Concatenate the contents of a set of input files into a single output file.
 
     Arguments
@@ -111,10 +101,12 @@ def combine_raw_merger_files(run, verbose=True):
     """
     beg = datetime.now()
     print(" - Combining merger files")
+    git_vers = constants.get_git()
     # Raw illustris merger filenames
     in_filenames = GET_ILLUSTRIS_BH_MERGERS_FILENAMES(run)
     # Filename for combined mergers file, raw = unfiltered
-    out_raw_fname = GET_MERGERS_COMBINED_FILENAME(run, filtered=False, type='txt')
+    out_raw_fname = GET_MERGERS_COMBINED_FILENAME(
+        run, filtered=False, type='txt', output_dir=output_dir)
     if verbose:
         print(" - - Writing   raw    combined mergers to '{}'".format(out_raw_fname))
     # Make backups of existing output files
@@ -222,7 +214,8 @@ def combine_raw_merger_files(run, verbose=True):
 
     # Write Raw data to hdf5 file
     # Filename for combined mergers file, filtered
-    out_filtered_fname = GET_MERGERS_COMBINED_FILENAME(run, filtered=True, type='hdf5')
+    out_filtered_fname = GET_MERGERS_COMBINED_FILENAME(
+        run, filtered=True, type='hdf5', output_dir=output_dir)
     print(" - Writing filtered combined mergers to '{}'".format(out_filtered_fname))
     _backup_exists(out_filtered_fname, verbose=verbose)
     with h5py.File(out_filtered_fname, 'w') as h5file:
@@ -230,6 +223,7 @@ def combine_raw_merger_files(run, verbose=True):
         head = h5file.create_group('Header')
         head.attrs['script'] = str(__file__)
         head.attrs['script_version'] = str(__version__)
+        head.attrs['git_version'] = str(git_vers)
         head.attrs['created'] = str(datetime.now().ctime())
         head.attrs['simulation'] = 'Illustris-{}'.format(run)
         head.attrs['description'] = (
@@ -260,17 +254,17 @@ def combine_raw_merger_files(run, verbose=True):
     return count_raw, count
 
 
-def combine_mergers_with_details(run, verbose=True):
+def combine_mergers_with_details(run, verbose=True, output_dir=None):
     """
     """
-
     from astropy.cosmology import WMAP9 as cosmo
-
     print(" - Combining mergers with details.")
+    git_vers = constants.get_git()
     beg_all = datetime.now()
-    mergers_in_fname = GET_MERGERS_COMBINED_FILENAME(run, filtered=True, type='hdf5')
-    mdets_in_fname = GET_MERGERS_DETAILS_FILENAME(run)
-    details_in_fname = GET_OUTPUT_DETAILS_FILENAME(run)
+    mergers_in_fname = GET_MERGERS_COMBINED_FILENAME(
+        run, filtered=True, type='hdf5', output_dir=output_dir)
+    mdets_in_fname = GET_MERGERS_DETAILS_FILENAME(run, output_dir=output_dir)
+    details_in_fname = GET_PUBLIC_DETAILS_FILENAME(run, output_dir=output_dir)
 
     # Load Everything
     # ---------------
@@ -519,7 +513,7 @@ def combine_mergers_with_details(run, verbose=True):
     num_unique = mq_ids.size
 
     # Produce Public Output File
-    mergers_out_fname = GET_PUBLIC_MERGERS_FILENAME(run)
+    mergers_out_fname = GET_PUBLIC_MERGERS_FILENAME(run, output_dir=output_dir)
     if verbose:
         print(" - Saving public merger output data to '{}'".format(mergers_out_fname))
     # Backup previous file if it exists
@@ -534,6 +528,7 @@ def combine_mergers_with_details(run, verbose=True):
         head = mergers_out.create_group('Header')
         head.attrs['script'] = str(__file__)
         head.attrs['script_version'] = str(__version__)
+        head.attrs['git_version'] = str(git_vers)
         head.attrs['created'] = str(datetime.now().ctime())
         head.attrs['simulation'] = 'Illustris-{}'.format(run)
         head.attrs['num_mergers'] = num_mergers
@@ -596,6 +591,7 @@ def combine_mergers_with_details(run, verbose=True):
     return
 
 
+'''
 def convert_txt_to_hdf5(run, verbose=True, recombine=False):
     """
 
@@ -698,6 +694,7 @@ def convert_txt_to_hdf5(run, verbose=True, recombine=False):
         print(" - Saved to '{}', Size: '{}' MB".format(hdf5_fname, fsize))
 
     return  # scale, id_in, id_out, mass_in, mass_out, hdf5_fname
+'''
 
 '''
 def loadMappedMergers(run, verbose=True, loadsave=True):
@@ -1050,11 +1047,6 @@ def _findBoundingBins(target, bins, thresh=1.0e-5):
     return [low, high, dlo, dhi]
 '''
 
-'''
-if __name__ == "__main__":
-    main()
-'''
-
 
 def _eddington_mdot(mass, eps=0.1):
     """Eddington Accretion rate, $\dot{M}_{Edd} = L_{Edd}/\epsilon c^2$.^
@@ -1176,3 +1168,7 @@ def _check_mergers_for_repeats(m_scale, m_id_in, m_id_out, det_q_id, det_q_first
             num_again_in, num_again_out, num_cont))
 
     return valid
+
+
+def _check_version(fname):
+    return constants._check_version(fname, __version__)

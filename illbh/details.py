@@ -45,19 +45,13 @@ import shutil
 # import sys
 import warnings
 
-# import zcode.inout as zio
-
-# from illpy.Constants import DTYPE, NUM_SNAPS
-# from . import BHConstants
-# from . BHConstants import DETAILS
+from . import constants
 from constants import _all_exist, DETAILS, DTYPE, GET_DETAILS_ORGANIZED_FILENAME, \
     GET_ILLUSTRIS_BH_DETAILS_FILENAMES, GET_MERGERS_DETAILS_FILENAME, \
     GET_MERGERS_COMBINED_FILENAME, \
-    GET_OUTPUT_DETAILS_FILENAME, GET_SNAPSHOT_SCALES, GET_SUBBOX_TIMES, MERGERS, NUM_SNAPS
+    GET_PUBLIC_DETAILS_FILENAME, GET_SNAPSHOT_SCALES, GET_SUBBOX_TIMES, MERGERS, NUM_SNAPS
 
 __version__ = '1.0'
-
-# VERSION = 0.23                                    # Version of BHDetails
 
 # Precision when comparing between scale-factors
 _DEF_SCALE_PRECISION = -8
@@ -83,49 +77,7 @@ class _MTYPE:
             yield getattr(cls, key)
 
 
-def main(run, output_dir=None, verbose=True, reorganize=False, reconvert=False):
-    """
-    """
-
-    '''
-    # Raw ('txt') ==> Organized ('txt')
-    # ---------------------------------
-    organized_fnames_txt = [GET_DETAILS_ORGANIZED_FILENAME(run, snap, type='txt')
-                            for snap in range(NUM_SNAPS)]
-    org_txt_exists = _all_exist(organized_fnames_txt)
-    if verbose and org_txt_exists:
-        print("All 'organized' details txt files exist.")
-
-    # Move all Details Entries from Illustris Raw Details files, into files with details organized
-    #    by snapshot.  No processing of data.
-    if reorganize or not org_txt_exists:
-        if verbose: print("Organizing details files.")
-        # Organize Details by Snapshot Time; create new, temporary ASCII Files
-        beg = datetime.now()
-        organize_txt_by_snapshot(run, verbose=verbose)
-        if verbose: print("Organization complete after {}".format(datetime.now()-beg))
-
-    # Organized ('txt') ==> Organized ('hdf5')
-    # ----------------------------------------
-    # Convert data from ASCII to hdf5, still no processing / trimming of data
-    organized_fnames_hdf5 = [GET_DETAILS_ORGANIZED_FILENAME(run, snap, type='hdf5')
-                             for snap in range(NUM_SNAPS)]
-    org_hd5f_exists = _all_exist(organized_fnames_hdf5)
-    if verbose and org_hd5f_exists:
-        print("All 'organized' details hdf5 files exist.")
-
-    if reconvert or not org_hd5f_exists:
-        if verbose: print("Converting txt files to hdf5")
-        convert_txt_to_hdf5(run, verbose)
-        if verbose: print("Conversion complete after {}".format(datetime.now()-beg))
-
-    # Combine and downsample from details snapshot files into general- and merger-details files.
-    '''
-
-    return
-
-
-def organize_txt_by_snapshot(run, verbose=True, clean_overwrites=True):
+def organize_txt_by_snapshot(run, verbose=True, clean_overwrites=True, output_dir=None):
     """Move Raw Illustris details entries (txt) into files with organized by snapshot (still txt).
 
     Notes
@@ -160,7 +112,7 @@ def organize_txt_by_snapshot(run, verbose=True, clean_overwrites=True):
     snap_scales = GET_SNAPSHOT_SCALES()
 
     # Output filenames, one per snapshot (even if empty---i.e. no blackholes)
-    output_fnames = [GET_DETAILS_ORGANIZED_FILENAME(run, snap, type='txt')
+    output_fnames = [GET_DETAILS_ORGANIZED_FILENAME(run, snap, type='txt', output_dir=output_dir)
                      for snap in range(NUM_SNAPS)]
     # Input filenames, raw illustris output ('blackhole_details_*.txt') 10,000s for Illustris-1
     input_fnames = GET_ILLUSTRIS_BH_DETAILS_FILENAMES(run)
@@ -254,7 +206,7 @@ def organize_txt_by_snapshot(run, verbose=True, clean_overwrites=True):
     return
 
 
-def convert_txt_to_hdf5(run, verbose=True):
+def convert_txt_to_hdf5(run, verbose=True, output_dir=None):
     """Convert the 'organized' (by snapshot) txt files into hdf5 files (still org. by snapshot).
 
     Notes
@@ -277,8 +229,9 @@ def convert_txt_to_hdf5(run, verbose=True):
 
     """
     print(" - Converting files from 'txt' to 'hdf5'")
+    git_vers = constants.get_git()
     # Input filenames for organized 'txt' files
-    input_fnames = [GET_DETAILS_ORGANIZED_FILENAME(run, snap, type='txt')
+    input_fnames = [GET_DETAILS_ORGANIZED_FILENAME(run, snap, type='txt', output_dir=output_dir)
                     for snap in range(NUM_SNAPS)]
     # Make sure they all exist
     txt_exist = _all_exist(input_fnames)
@@ -286,7 +239,7 @@ def convert_txt_to_hdf5(run, verbose=True):
         raise ValueError("'txt' files (e.g. '{}') do not all exist.".format(input_fnames[0]))
 
     # Output filenames for hdf5 data
-    output_fnames = [GET_DETAILS_ORGANIZED_FILENAME(run, snap, type='hdf5')
+    output_fnames = [GET_DETAILS_ORGANIZED_FILENAME(run, snap, type='hdf5', output_dir=output_dir)
                      for snap in range(NUM_SNAPS)]
 
     tot_num_entries = 0
@@ -305,6 +258,7 @@ def convert_txt_to_hdf5(run, verbose=True):
             head = h5file.create_group('Header')
             head.attrs['script'] = str(__file__)
             head.attrs['script_version'] = str(__version__)
+            head.attrs['git_version'] = str(git_vers)
             head.attrs['created'] = str(datetime.now().ctime())
             head.attrs['simulation'] = 'Illustris-{}'.format(run)
             head.attrs['num_entries'] = id.size
@@ -342,7 +296,7 @@ def convert_txt_to_hdf5(run, verbose=True):
     return
 
 
-def combine_downsample_and_mergers_hdf5(run, verbose=True, error_in_aft=False):
+def combine_downsample_and_mergers_hdf5(run, verbose=True, error_in_aft=False, output_dir=None):
     """Convert hdf5 details files into one general-details file, and mergers-details file.
 
     Notes
@@ -374,12 +328,16 @@ def combine_downsample_and_mergers_hdf5(run, verbose=True, error_in_aft=False):
 
     """
     print(" - Combining and down-sampling details and identifying merger-related entries.")
+    git_vers = constants.get_git()
     # Input hdf5 detaisl filenames
-    input_fnames = [GET_DETAILS_ORGANIZED_FILENAME(run, snap, type='hdf5')
+    input_fnames = [GET_DETAILS_ORGANIZED_FILENAME(run, snap, type='hdf5', output_dir=output_dir)
                     for snap in range(NUM_SNAPS)]
     # Make sure they all, already exist
     if not _all_exist(input_fnames):
         raise RuntimeError("Organized details files dont exist (e.g. '{}')".format(input_fnames[0]))
+
+    mdet_fname = GET_MERGERS_DETAILS_FILENAME(run, output_dir=output_dir)
+    dets_fname = GET_PUBLIC_DETAILS_FILENAME(run, output_dir=output_dir)
 
     # Load times (scale-factors) corresponding to subbox output, these are higher resolution
     #    output times at which we'll store details entries.
@@ -387,7 +345,9 @@ def combine_downsample_and_mergers_hdf5(run, verbose=True, error_in_aft=False):
     if verbose: print(" - {} Target times.".format(target_scales.size))
 
     # Load mergers data
-    with h5py.File(GET_MERGERS_COMBINED_FILENAME(run, filtered=True, type='hdf5'), 'r') as mergs_in:
+    mergers_fname = GET_MERGERS_COMBINED_FILENAME(
+        run, filtered=True, type='hdf5', output_dir=output_dir)
+    with h5py.File(mergers_fname, 'r') as mergs_in:
         mscales = mergs_in[MERGERS.SCALE][:]      # Scalefactors of mergers
         m_mass_in = mergs_in[MERGERS.MASS_IN][:]  # Mass of the 'in' BH ('out' is incorrect)
         m_ids_in = mergs_in[MERGERS.ID_IN][:]     # IDs of the 'in' BH
@@ -596,7 +556,6 @@ def combine_downsample_and_mergers_hdf5(run, verbose=True, error_in_aft=False):
 
     # Write details data to HDF5
     # --------------------------
-    dets_fname = GET_OUTPUT_DETAILS_FILENAME(run)
     if verbose: print(" - Saving Details to '{}'".format(dets_fname))
     # Backup previous file if it exists
     if os.path.exists(dets_fname):
@@ -610,6 +569,7 @@ def combine_downsample_and_mergers_hdf5(run, verbose=True, error_in_aft=False):
         dets_head = dets_h5file.create_group('Header')
         dets_head.attrs['script'] = str(__file__)
         dets_head.attrs['script_version'] = str(__version__)
+        dets_head.attrs['git_version'] = str(git_vers)
         dets_head.attrs['created'] = str(datetime.now().ctime())
         dets_head.attrs['simulation'] = 'Illustris-{}'.format(run)
         dets_head.attrs['target_times'] = target_scales
@@ -695,7 +655,6 @@ def combine_downsample_and_mergers_hdf5(run, verbose=True, error_in_aft=False):
 
     # Write merger-details data to HDF5
     # ---------------------------------
-    mdet_fname = GET_MERGERS_DETAILS_FILENAME(run)
     if verbose: print(" - Saving Merger-Details to '{}'".format(mdet_fname))
     # Backup previous file if it exists
     if os.path.exists(mdet_fname):
@@ -709,6 +668,7 @@ def combine_downsample_and_mergers_hdf5(run, verbose=True, error_in_aft=False):
         mdet_head = mdet_h5file.create_group('Header')
         mdet_head.attrs['script'] = str(__file__)
         mdet_head.attrs['script_version'] = str(__version__)
+        mdet_head.attrs['git_version'] = str(git_vers)
         mdet_head.attrs['created'] = str(datetime.now().ctime())
         mdet_head.attrs['simulation'] = 'Illustris-{}'.format(run)
         mdet_head.attrs['description'] = (
@@ -1174,3 +1134,7 @@ def get_out_dir(run, output_dir=None):
         output_dir = os.path.join(_PROCESSED_DIR % (_ILLUSTRIS_RUN_NAMES[run]), _DEF_OUTPUT_DIR, '')
     return output_dir
 '''
+
+
+def _check_version(fname):
+    return constants._check_version(fname, __version__)
