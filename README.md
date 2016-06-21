@@ -1,9 +1,9 @@
 # Illustris Black Holes Post-Processing Module #
 
-This module compiles and processes the raw black hole (BH) output files from the Illustris simulations, and converts them into publicly usable HDF5 files.  The two primary types of BH output from the illustris simulation are 'details' and 'mergers' files:
--   'details' : handled by `illbh.details.py`
-    -    These files contain the output from each BH particle active in the simulation at each integration time-step.
-    -    The parameters included are 'ID, time, mass, mdot, rho, cs' which are the BH's unique ID number, the time the entry was recorded (in cosmological scale-factor), the mass of the BH particles, the mass-accretion rate of the particle, the local gas density ('rho'), and the local gas sound-speed ('cs').
+This module compiles and processes the raw black hole (BH) output files from the Illustris simulations, and converts them into publicly usable HDF5 files.  The two primary types of BH output from the illustris simulation are 'details' and 'mergers' files:  
+-   'details' : handled by `illbh.details.py`  
+    -    These files contain the output from each BH particle active in the simulation at each integration time-step.  
+    -    The parameters included are 'ID, time, mass, mdot, rho, cs' which are the BH's unique ID number, the time the entry was recorded (in cosmological scale-factor), the mass of the BH particles, the mass-accretion rate of the particle, the local gas density ('rho'), and the local gas sound-speed ('cs').  
 -   'mergers' : handled by `illbh.mergers.py`
     -    These files contain a record of each BH-BH merger in the Illustris simulations.
     -    The parameters included are 'time, id_out, mass_out*, id_in, mass_in'.  We distinguish the two BH which participate in the merger as 'in' and 'out' BH.  The difference, determined randomly in the code, is which BH ID number persists along with the remnant after the merger.  The 'out' BH survives after the merger, increased in mass by that of the 'in' BH---which no longer exists.
