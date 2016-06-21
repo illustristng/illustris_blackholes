@@ -34,7 +34,7 @@ def main():
     # Make 'raw' 'organized' BH Merger Files
     # --------------------------------------
     if args.verbose:
-        print(" - Combined merger files")
+        print("\nCombining merger files")
     mergers_combined_good = _check_mergers_combined(args, output_dir)
     # Run `combine_raw_merger_files` as needed
     if args.refresh_all or not mergers_combined_good:
@@ -45,12 +45,12 @@ def main():
     # Process Details
     # ---------------
     if args.verbose:
-        print(" - Processing Details")
+        print("\nProcessing Details")
     # Organize details entries by snapshot, in txt files
     details_organized_txt_good = _check_details_organized_txt
     if args.refresh_all or not details_organized_txt_good:
         if args.verbose:
-            print(" - - Organizing Details by snapshot, as 'txt'")
+            print(" - Organizing Details by snapshot, as 'txt'")
         details.organize_txt_by_snapshot(args.run, verbose=args.verbose, output_dir=output_dir)
     if not _check_details_organized_txt(args, output_dir):
         raise RuntimeError("Details organized by snapshot ('txt') are not okay!")
@@ -59,7 +59,7 @@ def main():
     details_organized_hdf5_good = _check_details_organized_hdf5(args, output_dir)
     if args.refresh_all or not details_organized_hdf5_good:
         if args.verbose:
-            print(" - - Converting Details by snapshot to 'hdf5'")
+            print("\n - Converting Details by snapshot to 'hdf5'")
         details.convert_txt_to_hdf5(args.run, verbose=args.verbose, output_dir=output_dir)
     if not _check_details_organized_hdf5(args, output_dir):
         raise RuntimeError("Details organized by snapshot ('hdf5') are not okay!")
@@ -68,7 +68,7 @@ def main():
     details_good = _check_final_details(args, output_dir)
     if args.refresh_all or not details_good:
         if args.verbose:
-            print(" - - Downsampling details and finding merger-details")
+            print("\n - Downsampling details and finding merger-details")
         details.combine_downsample_and_mergers_hdf5(
             args.run, verbose=args.verbose, output_dir=output_dir)
     if not _check_final_details(args, output_dir):
@@ -79,7 +79,7 @@ def main():
     mergers_good = _check_final_mergers(args, output_dir)
     if args.refresh_all or not mergers_good:
         if args.verbose:
-            print(" - - Combining mergers and merger-details")
+            print("\nCombining mergers and merger-details")
         mergers.combine_mergers_with_details(
             args.run, verbose=args.verbose, output_dir=output_dir)
     if not _check_final_mergers(args, output_dir):
@@ -96,8 +96,6 @@ def load_args(args=None):
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('--verbose', '-v', dest='verbose', default=_DEF_VERBOSE, action='store_true',
                         help='Print more messages to the screen.')
-    # parser.add_argument('--debug', '-d', dest='debug', default=False, action='store_true',
-    #                     help="Do a test run, not processing all data.")
     parser.add_argument('--update', '-u', dest='refresh_all', default=True, action='store_false',
                         help="Only recreate files that are outdated.  Otherwise, recreate all.")
     parser.add_argument('--output', dest='output_dir', default=_DEF_OUTPUT_DIR,

@@ -107,8 +107,6 @@ def organize_txt_by_snapshot(run, verbose=True, clean_overwrites=True, output_di
         Use a simple method to clean-up duplicate details entries (see 'Notes' above).
 
     """
-    print(" - Organizing details entries by snapshot.")
-
     # Load scalefactor (time) for each snapshot
     snap_scales = GET_SNAPSHOT_SCALES()
 
@@ -189,7 +187,7 @@ def organize_txt_by_snapshot(run, verbose=True, clean_overwrites=True, output_di
 
         if verbose and ii % num_iter == 0:
             dur = datetime.now() - beg
-            print(" - - - {:5d}/{} = {:.4f} after {}; {:.3e} lines written, {:.3e} deleted".format(
+            print("\t{:5d}/{} = {:.4f} after {}; {:.3e} lines written, {:.3e} deleted".format(
                 ii, num_raw, ii/num_raw, dur, num_lines, num_deleted))
 
     # Close out details files
@@ -199,7 +197,7 @@ def organize_txt_by_snapshot(run, verbose=True, clean_overwrites=True, output_di
         tot_file_sizes += os.path.getsize(orgf.name)
 
     if verbose:
-        tot_file_sizes /= 1024/1024
+        tot_file_sizes = tot_file_sizes/(1024*1024)
         ave_size = tot_file_sizes/num_org
         print(" - - Total organized size = '{:.2f}' [MB], average = '{:.2f}' [MB]".format(
             tot_file_sizes, ave_size))
@@ -229,7 +227,7 @@ def convert_txt_to_hdf5(run, verbose=True, output_dir=None):
         Print basic information during execution.
 
     """
-    print(" - Converting files from 'txt' to 'hdf5'")
+    print(" - - Converting files from 'txt' to 'hdf5'")
     git_vers = constants._get_git()
     # Input filenames for organized 'txt' files
     input_fnames = [GET_DETAILS_ORGANIZED_FILENAME(run, snap, type='txt', output_dir=output_dir)
@@ -290,7 +288,7 @@ def convert_txt_to_hdf5(run, verbose=True, output_dir=None):
 
         if verbose:
             dur = datetime.now() - beg
-            print(" - {:3d} BH: {:5d}, entries: {:.2e}, median per: {:5.0f}."
+            print("\t{:3d} BH: {:5d}, entries: {:.2e}, median per: {:5.0f}."
                   " Total: {:.2e} entries after {}".format(
                       snap, q_ids.size, id.size, np.median(q_counts), tot_num_entries, dur))
 
@@ -328,7 +326,7 @@ def combine_downsample_and_mergers_hdf5(run, verbose=True, error_in_aft=False, o
     ---------
 
     """
-    print(" - Combining and down-sampling details and identifying merger-related entries.")
+    print(" - - Combining and down-sampling details and identifying merger-related entries.")
     git_vers = constants._get_git()
     # Input hdf5 detaisl filenames
     input_fnames = [GET_DETAILS_ORGANIZED_FILENAME(run, snap, type='hdf5', output_dir=output_dir)
@@ -343,7 +341,7 @@ def combine_downsample_and_mergers_hdf5(run, verbose=True, error_in_aft=False, o
     # Load times (scale-factors) corresponding to subbox output, these are higher resolution
     #    output times at which we'll store details entries.
     target_scales = GET_SUBBOX_TIMES(run)
-    if verbose: print(" - {} Target times.".format(target_scales.size))
+    if verbose: print(" - - {} Target times.".format(target_scales.size))
 
     # Load mergers data
     mergers_fname = GET_MERGERS_COMBINED_FILENAME(
@@ -355,7 +353,7 @@ def combine_downsample_and_mergers_hdf5(run, verbose=True, error_in_aft=False, o
         m_ids_out = mergs_in[MERGERS.ID_OUT][:]   # IDs of the 'out' BH
         num_mergers = mscales.size
         if verbose:
-            print(" - Loaded {} mergers from '{}'".format(num_mergers, mergs_in.filename))
+            print(" - - Loaded {} mergers from '{}'".format(num_mergers, mergs_in.filename))
 
     # Initialize Storage for merger-details ('md')
     md_id    = np.zeros([num_mergers, 3], dtype=DTYPE.ID)
@@ -552,7 +550,7 @@ def combine_downsample_and_mergers_hdf5(run, verbose=True, error_in_aft=False, o
             num_uniq, num_det_ids))
 
     if verbose:
-        print(" - Completed Details analysis, {} entries for {} BH, median-per {}".format(
+        print(" - - Completed Details analysis, {} entries for {} BH, median-per {}".format(
             num_cut, num_uniq, np.median(q_counts)))
 
     # Write details data to HDF5
@@ -604,8 +602,8 @@ def combine_downsample_and_mergers_hdf5(run, verbose=True, error_in_aft=False, o
         dets_h5file.create_dataset(DETAILS.CS, data=cs)
 
     if verbose:
-        det_fsize = os.path.getsize(dets_fname)/1024/1024
-        print(" - Saved {} entries for {} unique BH after {}, filesize = {:.3e} MB".format(
+        det_fsize = os.path.getsize(dets_fname)/(1024*1024)
+        print(" - - Saved {} entries for {} unique BH after {}, filesize = {:.3e} MB".format(
             num_cut, num_uniq, datetime.now()-beg, det_fsize))
 
     # Process Merger-Details Data
@@ -620,16 +618,16 @@ def combine_downsample_and_mergers_hdf5(run, verbose=True, error_in_aft=False, o
             num_found = np.apply_along_axis(np.count_nonzero, 0, md_scale)
             tot_num_found = np.sum(num_found)
             col_names = ['In-Bef', 'Out-Bef', 'Out-Aft']
-            print(" - {} Total merger-details entries found".format(tot_num_found))
-            print(" - - " +
+            print(" - - {} Total merger-details entries found".format(tot_num_found))
+            print(" - - - " +
                   ", ".join("{}: {:5d}".format(cc, nn) for cc, nn in zip(col_names, num_found)))
 
             # Count the nonzero elements in each column (i.e. each merger)
             num_found = np.apply_along_axis(np.count_nonzero, 1, md_scale)
-            print(" - Matches:")
+            print(" - - Matches:")
             for ii in range(4):
                 numf = np.sum(num_found == ii)
-                print(" - - {}: {}/{} = {:.4f}".format(
+                print(" - - - {}: {}/{} = {:.4f}".format(
                     ii, numf, num_mergers, numf/num_mergers))
 
     except Exception as err:
@@ -648,7 +646,7 @@ def combine_downsample_and_mergers_hdf5(run, verbose=True, error_in_aft=False, o
             warnings.warn("Some ({}) merger-details IDs are not Merger IDs\n{}".format(
                 len(extra_ids), extra_ids))
         if verbose:
-            print("Found details for {}/{} = {:.4f} merger IDs.  {} missing.".format(
+            print(" - - Found details for {}/{} = {:.4f} merger IDs.  {} missing.".format(
                 num_mdet_ids, num_merger_ids, num_mdet_ids/num_merger_ids, len(missing_ids)))
     except Exception as err:
         warnings.warn("CAUGHT EXCEPTION (num_mdet_ids) '{}'".format(str(err)))
@@ -656,7 +654,7 @@ def combine_downsample_and_mergers_hdf5(run, verbose=True, error_in_aft=False, o
 
     # Write merger-details data to HDF5
     # ---------------------------------
-    if verbose: print(" - Saving Merger-Details to '{}'".format(mdet_fname))
+    if verbose: print(" - - Saving Merger-Details to '{}'".format(mdet_fname))
     # Backup previous file if it exists
     if os.path.exists(mdet_fname):
         backup_fname = mdet_fname + '.bak'
@@ -701,10 +699,10 @@ def combine_downsample_and_mergers_hdf5(run, verbose=True, error_in_aft=False, o
 
     if verbose:
         mdet_fsize = os.path.getsize(mdet_fname)/1024/1024
-        print(" - Saved {} entries for {} unique BH after {}, filesize = {:.3e} MB".format(
+        print(" - - Saved {} entries for {} unique BH after {}, filesize = {:.3e} MB".format(
             tot_num_found, num_mdet_ids, datetime.now()-beg, mdet_fsize))
 
-        print("Done after {}".format(datetime.now()-beg_all))
+        print(" - - Done after {}".format(datetime.now()-beg_all))
 
     return
 

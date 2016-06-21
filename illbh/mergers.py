@@ -101,7 +101,6 @@ def combine_raw_merger_files(run, verbose=True, output_dir=None):
 
     """
     beg = datetime.now()
-    print(" - Combining merger files")
     git_vers = constants._get_git()
     # Raw illustris merger filenames
     in_filenames = GET_ILLUSTRIS_BH_MERGERS_FILENAMES(run)
@@ -129,7 +128,7 @@ def combine_raw_merger_files(run, verbose=True, output_dir=None):
     # Open output file for writing
     with open(out_raw_fname, 'w') as out_raw:
         # Iterate over input files
-        if verbose: print(" - Iterating over {} input merger files".format(nums_in))
+        if verbose: print(" - - Iterating over {} input merger files".format(nums_in))
         for ii, in_name in enumerate(in_filenames):
             last_time = 0.0  # Stores the previous scale-factor (time)
 
@@ -149,9 +148,9 @@ def combine_raw_merger_files(run, verbose=True, output_dir=None):
                     #    Only search elements from *this* file
                     time_mask = (time < scale[file_count:]) | np.isclose(scale[file_count:], time)
                     bads = np.where(time_mask)[0] + file_count
-                    warnings.warn("Merger overwrite detected.  Time: {}, last: {}.\n\t"
-                                  "file_count: {}, count: {}, bads: {}".format(
-                                      time, last_time, file_count, count, bads))
+                    # warnings.warn("Merger overwrite detected.  Time: {}, last: {}.\n\t"
+                    #               "file_count: {}, count: {}, bads: {}".format(
+                    #                   time, last_time, file_count, count, bads))
                     # Delete these lines
                     if bads.size:
                         scale = np.delete(scale, bads)
@@ -185,7 +184,7 @@ def combine_raw_merger_files(run, verbose=True, output_dir=None):
                       "".format(ii, nums_in, ii/nums_in, dur, count_raw, count, num_deleted))
 
     if verbose:
-        print("Finished Raw: {}, Filtered: {} lines after {}".format(
+        print(" - - Finished Raw: {}, Filtered: {} lines; after {}".format(
             count_raw, count, datetime.now()-beg))
 
     # Process and Save Filtered Merger Data to HDF5
@@ -211,13 +210,13 @@ def combine_raw_merger_files(run, verbose=True, output_dir=None):
     all_ids = np.append(id_in, id_out)
     all_ids = np.unique(all_ids)
     if verbose:
-        print(" - Mergers: {}, Unique BH: {}".format(inds.size, all_ids.size))
+        print(" - - Mergers: {}, Unique BH: {}".format(inds.size, all_ids.size))
 
     # Write Raw data to hdf5 file
     # Filename for combined mergers file, filtered
     out_filtered_fname = GET_MERGERS_COMBINED_FILENAME(
         run, filtered=True, type='hdf5', output_dir=output_dir)
-    print(" - Writing filtered combined mergers to '{}'".format(out_filtered_fname))
+    print(" - - Writing filtered combined mergers to '{}'".format(out_filtered_fname))
     _backup_exists(out_filtered_fname, verbose=verbose)
     with h5py.File(out_filtered_fname, 'w') as h5file:
         # Add metadata in "Header" dataset
@@ -250,7 +249,7 @@ def combine_raw_merger_files(run, verbose=True, output_dir=None):
 
     if verbose:
         fsize = os.path.getsize(out_filtered_fname)/1024/1024
-        print(" - Saved to '{}', Size: '{}' MB".format(out_filtered_fname, fsize))
+        print(" - - Saved to '{}', Size: '{:.3e}' MB".format(out_filtered_fname, fsize))
 
     return count_raw, count
 
