@@ -10,25 +10,20 @@ from . import details
 from . import mergers
 
 _DEF_OUTPUT_DIR = './'
-_DEF_VERBOSE = True
+_DEF_VERB = True
+_ILLUSTRIS_OUTPUT_DIR_BASE = "/n/ghernquist/Illustris/Runs/{:s}/"  # output/"
 
 
 def main():
     beg_time = datetime.now()
-    args = load_args()
-
-    # Setup Output Directory
-    output_dir = os.path.abspath(args.output_dir)
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-    if not os.path.isdir(output_dir):
-        raise ValueError("`output_dir` '{}' is invalid.".format(output_dir))
+    args, output_dir, input_dir = load_args()
 
     # Say Hello
     if args.verbose:
         git_vers = constants._get_git()
         title_str = "Illustris Black Holes Module, version: {}".format(git_vers)
         print("\n\n{}\n{}\n{}\n".format(title_str, '='*len(title_str), beg_time.ctime()))
+    print("Input  directory: '{}'".format(input_dir))
     print("Output directory: '{}'".format(output_dir))
 
     # Make 'raw' 'organized' BH Merger Files
@@ -93,18 +88,53 @@ def main():
 def load_args(args=None):
     import argparse
 
-    parser = argparse.ArgumentParser(description='')
-    parser.add_argument('--verbose', '-v', dest='verbose', default=_DEF_VERBOSE, action='store_true',
+    parser = argparse.ArgumentParser(description="Black hole module for the Illustris simulations.")
+    parser.add_argument('--verbose', '-v', dest='verbose', default=_DEF_VERB, action='store_true',
                         help='Print more messages to the screen.')
     parser.add_argument('--update', '-u', dest='refresh_all', default=True, action='store_false',
                         help="Only recreate files that are outdated.  Otherwise, recreate all.")
-    parser.add_argument('--output', dest='output_dir', default=_DEF_OUTPUT_DIR,
-                        help='Destination directory for output.')
-    parser.add_argument('--run', '-r', dest='run', default=1,
-                        help='Illustris simulation run number {1,3}')
+
+    parser.add_argument('--output', dest='output_dir', default=None,
+                        help="Destination directory for output "
+                             "(Default: './[RUN]/').")
+    parser.add_argument('--run_dir', dest='input_dir', default=None,
+                        help="Directory in which to find the target `run` "
+                             "(Default: '/n/ghernquist/Illustris/Runs/').")
+    parser.add_argument('--run', '-r', dest='run', default='L75n1820FP',
+                        help="Simulation run name (Default: 'L75n1820FP').")
 
     args = parser.parse_args(args=args)
-    return args
+
+    # Setup Output Directory
+    output_dir = args.output_dir
+    if output_dir is None:
+        output_dir = os.path.join(os.path.abspath(_DEF_OUTPUT_DIR), args.run, '')
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    if not os.path.isdir(output_dir):
+        raise ValueError("`output_dir` '{}' is invalid.".format(output_dir))
+
+    # Setup input directory
+    input_dir = args.input_dir
+    if input_dir is None:
+        input_dir = _ILLUSTRIS_OUTPUT_DIR_BASE.format(args.run)
+        if not os.path.isdir(input_dir):
+            raise ValueError("'{}' is invalid.  Could not construct path using run '{}'.".format(
+                input_dir, args.run))
+
+        if not _check_has_output_dir(input_dir):
+            raise ValueError("Could not find an 'output' directory in '{}'".format(input_dir))
+
+    if not _check_has_output_dir(input_dir):
+        expand_input_dir = os.path.append(input_dir, args.run, '')
+        warnings.warn("`input_dir`: '{}' doesn't have an output directory, trying '{}'.".format(
+            input_dir, expand_input_dir))
+        if _check_has_output_dir(expand_input_dir):
+            input_dir = expand_input_dir
+        else:
+            raise ValueError("Could not find an 'output' directory")
+
+    return args, output_dir, input_dir
 
 
 def _check_mergers_combined(args, output_dir):
@@ -186,6 +216,13 @@ def _check_final_mergers(args, output_dir):
             mergers_fname, exists, current))
     is_good = exists and current
     return is_good
+
+
+def _check_has_output_dir(path):
+    # Get list of directories in `input_dir`
+    list_dir = [ld for ld in os.listdir(path) if os.path.isdir(os.path.join(path, ld))]
+    return ('output' in list_dir)
+
 
 if __name__ == "__main__":
     main()

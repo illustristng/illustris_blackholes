@@ -70,7 +70,7 @@ __version__ = '1.0.1'
 _MERGS_BUF_SIZE = int(1e5)
 
 
-def combine_raw_merger_files(run, verbose=True, output_dir=None):
+def combine_raw_merger_files(run, verbose=True, output_dir=None, input_dir=None):
     """Concatenate the contents of a set of input files into a single output file.
 
     Arguments
@@ -85,11 +85,11 @@ def combine_raw_merger_files(run, verbose=True, output_dir=None):
     beg = datetime.now()
     git_vers = constants._get_git()
     # Load scalefactor (time) for each snapshot (rounded)
+    # Raw illustris merger filenames
+    # in_filenames = GET_ILLUSTRIS_BH_MERGERS_FILENAMES(run)
     num_snaps, in_filenames = constants.get_illustris_metadata(
         run, [META.NUM_SNAPS, META.MERGERS_FILENAMES])
 
-    # Raw illustris merger filenames
-    # in_filenames = GET_ILLUSTRIS_BH_MERGERS_FILENAMES(run)
     # Filename for combined mergers file, raw = unfiltered
     out_raw_fname = constants.GET_MERGERS_COMBINED_FILENAME(
         run, filtered=False, type='txt', output_dir=output_dir)
@@ -211,7 +211,7 @@ def combine_raw_merger_files(run, verbose=True, output_dir=None):
         head.attrs['script_version'] = str(__version__)
         head.attrs['git_version'] = str(git_vers)
         head.attrs['created'] = str(datetime.now().ctime())
-        head.attrs['simulation'] = 'Illustris-{}'.format(run)
+        head.attrs['simulation'] = '{}'.format(run)
         head.attrs['description'] = (
             "Illustris blackhole merger data, combined from all of the "
             "individual blackhole (BH) merger text files.  The content of the "
@@ -247,6 +247,7 @@ def combine_mergers_with_details(run, verbose=True, output_dir=None):
     # Load scalefactor (time) for each snapshot (rounded)
     num_snaps, snap_scales = constants.get_illustris_metadata(
         run, [META.NUM_SNAPS, META.SNAP_TIMES])
+    snap_scales = np.around(snap_scales, -constants._DEF_SCALE_PRECISION)
 
     git_vers = constants._get_git()
     beg_all = datetime.now()
@@ -522,7 +523,7 @@ def combine_mergers_with_details(run, verbose=True, output_dir=None):
         head.attrs['script_version'] = str(__version__)
         head.attrs['git_version'] = str(git_vers)
         head.attrs['created'] = str(datetime.now().ctime())
-        head.attrs['simulation'] = 'Illustris-{}'.format(run)
+        head.attrs['simulation'] = '{}'.format(run)
         head.attrs['num_mergers'] = num_mergers
         head.attrs['num_blackholes'] = num_unique
         head.attrs['description'] = (

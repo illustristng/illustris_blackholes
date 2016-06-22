@@ -102,13 +102,12 @@ def organize_txt_by_snapshot(run, verbose=True, clean_overwrites=True, output_di
     # Load scalefactor (time) for each snapshot (rounded)
     num_snaps, snap_scales, input_fnames = constants.get_illustris_metadata(
         run, [META.NUM_SNAPS, META.SNAP_TIMES, META.DETAILS_FILENAMES])
+    snap_scales = np.around(snap_scales, -constants._DEF_SCALE_PRECISION)
 
     # Output filenames, one per snapshot (even if empty---i.e. no blackholes)
     output_fnames = [
         constants.GET_DETAILS_ORGANIZED_FILENAME(run, snap, type='txt', output_dir=output_dir)
         for snap in range(num_snaps)]
-    # Input filenames, raw illustris output ('blackhole_details_*.txt') 10,000s for Illustris-1
-    # input_fnames = GET_ILLUSTRIS_BH_DETAILS_FILENAMES(run)
 
     # Make sure output path is okay
     head_dir, tail_path = os.path.split(output_fnames[0])
@@ -255,7 +254,7 @@ def convert_txt_to_hdf5(run, verbose=True, output_dir=None):
             head.attrs['script_version'] = str(__version__)
             head.attrs['git_version'] = str(git_vers)
             head.attrs['created'] = str(datetime.now().ctime())
-            head.attrs['simulation'] = 'Illustris-{}'.format(run)
+            head.attrs['simulation'] = '{}'.format(run)
             head.attrs['num_entries'] = id.size
             head.attrs['num_blackholes'] = q_ids.size
 
@@ -570,7 +569,7 @@ def combine_downsample_and_mergers_hdf5(run, verbose=True, error_in_aft=False, o
         dets_head.attrs['script_version'] = str(__version__)
         dets_head.attrs['git_version'] = str(git_vers)
         dets_head.attrs['created'] = str(datetime.now().ctime())
-        dets_head.attrs['simulation'] = 'Illustris-{}'.format(run)
+        dets_head.attrs['simulation'] = '{}'.format(run)
         dets_head.attrs['target_times'] = target_scales
         dets_head.attrs['num_entries'] = num_cut
         dets_head.attrs['num_blackholes'] = num_uniq
@@ -669,7 +668,7 @@ def combine_downsample_and_mergers_hdf5(run, verbose=True, error_in_aft=False, o
         mdet_head.attrs['script_version'] = str(__version__)
         mdet_head.attrs['git_version'] = str(git_vers)
         mdet_head.attrs['created'] = str(datetime.now().ctime())
-        mdet_head.attrs['simulation'] = 'Illustris-{}'.format(run)
+        mdet_head.attrs['simulation'] = '{}'.format(run)
         mdet_head.attrs['description'] = (
             "Illustris blackhole details data specifically associated with blackhole mergers.  "
             "Each merger involves an 'in' BH and an 'out' BH, distinguished by which one "

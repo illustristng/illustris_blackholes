@@ -10,26 +10,19 @@ import warnings
 
 __version__ = '1.0'
 
-_ILLUSTRIS_OUTPUT_DIR_BASE = "/n/ghernquist/Illustris/Runs/{:s}/output/"
-
-_ILLUSTRIS_RUN_NAMES   = {1: "L75n1820FP",
-                          2: "L75n910FP",
-                          3: "L75n455FP"}
-
-_ROOT_OUTPUT_DIR = "/n/home00/lkelley/ghernquistfs1/illustris/data/{:s}/"
 _OUTPUT_DETAILS_DIR = "blackholes/details/"
 _OUTPUT_DETAILS_ORGANIZED_DIR = os.path.join(_OUTPUT_DETAILS_DIR, "organized")
 _OUTPUT_MERGERS_DIR = "blackholes/mergers/"
 
-_OUTPUT_DETAILS_ORGANIZED_FILENAME = "ill-{:d}_blackhole_details_snap-{:03d}.{:s}"
-_PUBLIC_DETAILS_FILENAME = "ill-{:d}_blackhole_details.hdf5"
+_OUTPUT_DETAILS_ORGANIZED_FILENAME = "{:s}_blackhole_details_snap-{:03d}.{:s}"
+_PUBLIC_DETAILS_FILENAME = "{:s}_blackhole_details.hdf5"
 
-_OUTPUT_MERGERS_COMBINED_FILENAME = "ill-{:d}_blackhole_mergers_combined_{:s}.{:s}"
-_OUTPUT_MERGERS_DETAILS_FILENAME = "ill-{:d}_blackhole_merger_details.hdf5"
+_OUTPUT_MERGERS_COMBINED_FILENAME = "{:s}_blackhole_mergers_combined_{:s}.{:s}"
+_OUTPUT_MERGERS_DETAILS_FILENAME = "{:s}_blackhole_merger_details.hdf5"
 
-_PUBLIC_MERGERS_FILENAME = "ill-{:d}_blackhole_mergers.hdf5"
+_PUBLIC_MERGERS_FILENAME = "{:s}_blackhole_mergers.hdf5"
 
-_ILLUSTRIS_METADATA_FILENAME = "aux_data/ill-{:d}_metadata.hdf5"
+_ILLUSTRIS_METADATA_FILENAME = "aux_data/{:s}_metadata.hdf5"
 
 # Precision when comparing between scale-factors
 _DEF_SCALE_PRECISION = -8
@@ -95,11 +88,9 @@ def _all_exist(files):
 
 def _get_output_dir(run, output_dir, append=None):
     """
-    /n/home00/lkelley/ghernquistfs1/illustris/data/{:s}/
-    /n/home00/lkelley/ghernquistfs1/illustris/data/L75n1820FP/
     """
     if output_dir is None:
-        output_dir = _ROOT_OUTPUT_DIR.format(_ILLUSTRIS_RUN_NAMES[run])
+        output_dir = os.path.append(os.path.abspath(os.path.curdir), run)
     if append is not None:
         output_dir = os.path.join(output_dir, append, '')
     return output_dir
@@ -164,7 +155,7 @@ def GET_PUBLIC_MERGERS_FILENAME(run, output_dir=None):
     return fname
 
 
-def get_illustris_metadata(run, keys):
+def get_illustris_metadata(run, keys, input_dir=None):
     """Load data corresponding to `keys` from the appropriate illustris metadata file.
 
     First make sure the metadata file exists, and is the current version.
@@ -175,7 +166,7 @@ def get_illustris_metadata(run, keys):
     reload = False
     results = []
     if not os.path.isfile(meta_fname):
-        warnings.warn("Metadata for Illustris-{:d} does not exist.  Recreating.".format(run))
+        warnings.warn("Metadata for '{:s}' does not exist.  Recreating.".format(run))
         reload = True
     else:
         with h5py.File(meta_fname, 'r') as meta_hdf5:
@@ -203,10 +194,14 @@ def get_illustris_metadata(run, keys):
     return results
 
 
-def _load_illustris_metadata(run):
+def _load_illustris_metadata(run, input_dir=None):
     beg_all = datetime.now()
     # /n/ghernquist/Illustris/Runs/{:s}/output/ ==> /n/ghernquist/Illustris/Runs/L75n1820FP/output/
-    ill_dir = _ILLUSTRIS_OUTPUT_DIR_BASE.format(_ILLUSTRIS_RUN_NAMES[run])
+    # ill_dir = _ILLUSTRIS_OUTPUT_DIR_BASE.format(_ILLUSTRIS_RUN_NAMES[run])
+    if input_dir is None:
+        input_dir = '/n/ghernquist/Illustris/Runs/L75n1820FP/'
+    ill_dir = os.path.join(input_dir, 'output', '')
+
     meta_fname = _ILLUSTRIS_METADATA_FILENAME.format(run)
     # Make sure path to save meta-files exists
     _check_path(meta_fname)
@@ -281,7 +276,12 @@ def _load_illustris_metadata(run):
             return False
         return True
 
-    for dir_name, subdirs, files in os.walk(ill_dir):
+    start_walk_dir = str(ill_dir)
+    # Avoid issues with Illustris-1 txt file structure...
+    if start_walk_dir.startswith('/n/ghernquist/Illustris/Runs/L75n1820FP/'):
+        start_walk_dir = "/n/ghernquist/Illustris/Runs/L75n1820FP/txt-files/txtfiles_new/"
+        warnings.warn("Overriding walk directory to '{}'".format(start_walk_dir))
+    for dir_name, subdirs, files in os.walk(start_walk_dir):
         # Modify `subdirs` *in-place* to ignore directories in walk
         subdirs[:] = [sd for sd in subdirs if test_dir(sd)]
         print(dir_name)
@@ -309,7 +309,7 @@ def _load_illustris_metadata(run):
         head.attrs['script_version'] = str(__version__)
         head.attrs['git_version'] = str(_get_git())
         head.attrs['created'] = str(datetime.now().ctime())
-        head.attrs['simulation'] = 'Illustris-{}'.format(run)
+        head.attrs['simulation'] = '{}'.format(run)
 
         meta_hdf5[META.NUM_SNAPS] = num_snaps
         meta_hdf5[META.SNAP_TIMES] = snap_scales
