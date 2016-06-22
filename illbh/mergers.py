@@ -44,9 +44,6 @@ Notes
 """
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-import astropy
-import astropy.constants
-from astropy.cosmology import WMAP9 as cosmo
 from datetime import datetime
 import h5py
 import numpy as np
@@ -54,33 +51,18 @@ import os
 import shutil
 import warnings
 
-# from . import constants
 from illbh import constants
-from illbh.constants import DETAILS, DTYPE, \
-    GET_ILLUSTRIS_BH_MERGERS_FILENAMES, GET_MERGERS_COMBINED_FILENAME, \
-    GET_MERGERS_DETAILS_FILENAME, GET_PUBLIC_DETAILS_FILENAME, \
-    GET_PUBLIC_MERGERS_FILENAME, MERGERS, \
-    _backup_exists, _zero_pad_end
+from illbh.constants import DETAILS, DTYPE, MERGERS, META
 
-SPLC = astropy.constants.c.cgs.value
-NWTG = astropy.constants.G.cgs.value
-MPRT = astropy.constants.m_p.cgs.value
-SIGMA_T = astropy.constants.sigma_T.cgs.value
-MSOL = astropy.constants.M_sun.cgs.value
-KPC = astropy.constants.kpc.cgs.value
-HPAR = cosmo.h
-YR = astropy.units.yr.to(astropy.units.second)
-
-
-class CONV_ILL_TO_CGS:
-    """Convert from illustris units to physical [cgs] units (multiply).
-    """
-    MASS = 1.0e10*MSOL/HPAR               # Convert from e10 Msol to [g]
-    MDOT = 10.22*MSOL/YR                  # Multiply by this to get [g/s]
-    DENS = 6.77025e-22                    # (1e10 Msol/h)/(ckpc/h)^3 to g/cm^3 *COMOVING*
-    DIST = KPC/HPAR                       # Convert from [ckpc/h] to [comoving cm]
-    VEL  = 1.0e5                          # [km/s] to [cm/s]
-    CS   = 1.0                            # ??????? FIX
+# Physical Constants in CGS
+SPLC = 2.99792458e+10
+NWTG = 6.67384000e-08
+MPRT = 1.67262178e-24
+SIGMA_T = 6.65245873e-25
+MSOL = 1.98910000e+33
+KPC = 3.08567758e+21
+HPAR = 6.93200000e-01
+YR = 3.15576000e+07
 
 __version__ = '1.0.1'
 
@@ -102,15 +84,19 @@ def combine_raw_merger_files(run, verbose=True, output_dir=None):
     """
     beg = datetime.now()
     git_vers = constants._get_git()
+    # Load scalefactor (time) for each snapshot (rounded)
+    num_snaps, in_filenames = constants.get_illustris_metadata(
+        run, [META.NUM_SNAPS, META.MERGERS_FILENAMES])
+
     # Raw illustris merger filenames
-    in_filenames = GET_ILLUSTRIS_BH_MERGERS_FILENAMES(run)
+    # in_filenames = GET_ILLUSTRIS_BH_MERGERS_FILENAMES(run)
     # Filename for combined mergers file, raw = unfiltered
-    out_raw_fname = GET_MERGERS_COMBINED_FILENAME(
+    out_raw_fname = constants.GET_MERGERS_COMBINED_FILENAME(
         run, filtered=False, type='txt', output_dir=output_dir)
     if verbose:
         print(" - - Writing   raw    combined mergers to '{}'".format(out_raw_fname))
     # Make backups of existing output files
-    _backup_exists(out_raw_fname, verbose=verbose)
+    constants._backup_exists(out_raw_fname, verbose=verbose)
 
     # Storage for details entries
     #    Make initial guess for how many entries there will be (resized later as-needed)
@@ -172,11 +158,11 @@ def combine_raw_merger_files(run, verbose=True, output_dir=None):
 
                 # If we reach edge of storage arrays, increase size
                 if count >= scale.size:
-                    scale = _zero_pad_end(scale, _MERGS_BUF_SIZE)
-                    id_in = _zero_pad_end(id_in, _MERGS_BUF_SIZE)
-                    id_out = _zero_pad_end(id_out, _MERGS_BUF_SIZE)
-                    mass_in = _zero_pad_end(mass_in, _MERGS_BUF_SIZE)
-                    mass_out = _zero_pad_end(mass_out, _MERGS_BUF_SIZE)
+                    scale = constants._zero_pad_end(scale, _MERGS_BUF_SIZE)
+                    id_in = constants._zero_pad_end(id_in, _MERGS_BUF_SIZE)
+                    id_out = constants._zero_pad_end(id_out, _MERGS_BUF_SIZE)
+                    mass_in = constants._zero_pad_end(mass_in, _MERGS_BUF_SIZE)
+                    mass_out = constants._zero_pad_end(mass_out, _MERGS_BUF_SIZE)
 
             if verbose and ii % interv == 0:
                 dur = datetime.now()-beg
@@ -214,10 +200,10 @@ def combine_raw_merger_files(run, verbose=True, output_dir=None):
 
     # Write Raw data to hdf5 file
     # Filename for combined mergers file, filtered
-    out_filtered_fname = GET_MERGERS_COMBINED_FILENAME(
+    out_filtered_fname = constants.GET_MERGERS_COMBINED_FILENAME(
         run, filtered=True, type='hdf5', output_dir=output_dir)
     print(" - - Writing filtered combined mergers to '{}'".format(out_filtered_fname))
-    _backup_exists(out_filtered_fname, verbose=verbose)
+    constants._backup_exists(out_filtered_fname, verbose=verbose)
     with h5py.File(out_filtered_fname, 'w') as h5file:
         # Add metadata in "Header" dataset
         head = h5file.create_group('Header')
@@ -257,17 +243,20 @@ def combine_raw_merger_files(run, verbose=True, output_dir=None):
 def combine_mergers_with_details(run, verbose=True, output_dir=None):
     """
     """
-    from astropy.cosmology import WMAP9 as cosmo
     print(" - Combining mergers with details.")
+    # Load scalefactor (time) for each snapshot (rounded)
+    num_snaps, snap_scales = constants.get_illustris_metadata(
+        run, [META.NUM_SNAPS, META.SNAP_TIMES])
+
     git_vers = constants._get_git()
     beg_all = datetime.now()
-    mergers_in_fname = GET_MERGERS_COMBINED_FILENAME(
+    mergers_in_fname = constants.GET_MERGERS_COMBINED_FILENAME(
         run, filtered=True, type='hdf5', output_dir=output_dir)
-    mdets_in_fname = GET_MERGERS_DETAILS_FILENAME(run, output_dir=output_dir)
-    details_in_fname = GET_PUBLIC_DETAILS_FILENAME(run, output_dir=output_dir)
+    mdets_in_fname = constants.GET_MERGERS_DETAILS_FILENAME(run, output_dir=output_dir)
+    details_in_fname = constants.GET_PUBLIC_DETAILS_FILENAME(run, output_dir=output_dir)
 
     # Load scalefactor (time) for each snapshot (rounded)
-    snap_scales = constants.GET_SNAPSHOT_SCALES()
+    # snap_scales = constants.GET_SNAPSHOT_SCALES()
 
     # Load Everything
     # ---------------
@@ -335,10 +324,10 @@ def combine_mergers_with_details(run, verbose=True, output_dir=None):
 
     # Get lookback times
     d_lbt = np.zeros([num_mergers, 3])
-    m_lbt = cosmo.lookback_time((1/m_scale) - 1).cgs.value
+    m_lbt = constants.scale_to_age_flat(m_scale)
     for ii in range(3):
         inds = np.where(d_scale[:, ii] > 0.0)[0]
-        d_lbt[inds, ii] = cosmo.lookback_time((1/d_scale[inds, ii]) - 1).cgs.value
+        d_lbt[inds, ii] = constants.scale_to_age_flat(d_scale[inds, ii])
 
     valid = _check_mergers_for_repeats(
         m_scale, m_id_in, m_id_out, det_q_id, det_q_first, det_scale, det_id)
@@ -516,7 +505,7 @@ def combine_mergers_with_details(run, verbose=True, output_dir=None):
     m_snaps = np.digitize(scale, snap_scales, right=True)
 
     # Produce Public Output File
-    mergers_out_fname = GET_PUBLIC_MERGERS_FILENAME(run, output_dir=output_dir)
+    mergers_out_fname = constants.GET_PUBLIC_MERGERS_FILENAME(run, output_dir=output_dir)
     if verbose:
         print(" - Saving public merger output data to '{}'".format(mergers_out_fname))
     # Backup previous file if it exists
@@ -695,7 +684,7 @@ def _compare_select_correction_mass(masses):
         # If a pair are comparable, return minimum of those
         else:
             for ii in range(3):
-                jj == (ii + 1) % 2
+                jj = (ii + 1) % 2
                 if _close(masses[ii], masses[jj]):
                     return np.min([masses[ii], masses[jj]])
 

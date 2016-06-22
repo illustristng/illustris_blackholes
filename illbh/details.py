@@ -42,15 +42,10 @@ import h5py
 import os
 import numpy as np
 import shutil
-# import sys
 import warnings
 
-# from . import constants
 from illbh import constants
-from illbh.constants import _all_exist, DETAILS, DTYPE, GET_DETAILS_ORGANIZED_FILENAME, \
-    GET_ILLUSTRIS_BH_DETAILS_FILENAMES, GET_MERGERS_DETAILS_FILENAME, \
-    GET_MERGERS_COMBINED_FILENAME, \
-    GET_PUBLIC_DETAILS_FILENAME, GET_SNAPSHOT_SCALES, GET_SUBBOX_TIMES, MERGERS, NUM_SNAPS
+from illbh.constants import DETAILS, DTYPE, MERGERS, META
 
 __version__ = '1.0'
 
@@ -105,13 +100,15 @@ def organize_txt_by_snapshot(run, verbose=True, clean_overwrites=True, output_di
 
     """
     # Load scalefactor (time) for each snapshot (rounded)
-    snap_scales = GET_SNAPSHOT_SCALES()
+    num_snaps, snap_scales, input_fnames = constants.get_illustris_metadata(
+        run, [META.NUM_SNAPS, META.SNAP_TIMES, META.DETAILS_FILENAMES])
 
     # Output filenames, one per snapshot (even if empty---i.e. no blackholes)
-    output_fnames = [GET_DETAILS_ORGANIZED_FILENAME(run, snap, type='txt', output_dir=output_dir)
-                     for snap in range(NUM_SNAPS)]
+    output_fnames = [
+        constants.GET_DETAILS_ORGANIZED_FILENAME(run, snap, type='txt', output_dir=output_dir)
+        for snap in range(num_snaps)]
     # Input filenames, raw illustris output ('blackhole_details_*.txt') 10,000s for Illustris-1
-    input_fnames = GET_ILLUSTRIS_BH_DETAILS_FILENAMES(run)
+    # input_fnames = GET_ILLUSTRIS_BH_DETAILS_FILENAMES(run)
 
     # Make sure output path is okay
     head_dir, tail_path = os.path.split(output_fnames[0])
@@ -222,23 +219,28 @@ def convert_txt_to_hdf5(run, verbose=True, output_dir=None):
 
     """
     print(" - - Converting files from 'txt' to 'hdf5'")
+    num_snaps = constants.get_illustris_metadata(run, META.NUM_SNAPS)
+
     git_vers = constants._get_git()
     # Input filenames for organized 'txt' files
-    input_fnames = [GET_DETAILS_ORGANIZED_FILENAME(run, snap, type='txt', output_dir=output_dir)
-                    for snap in range(NUM_SNAPS)]
+    input_fnames = [
+        constants.GET_DETAILS_ORGANIZED_FILENAME(run, snap, type='txt', output_dir=output_dir)
+        for snap in range(num_snaps)]
+
     # Make sure they all exist
-    txt_exist = _all_exist(input_fnames)
+    txt_exist = constants._all_exist(input_fnames)
     if not txt_exist:
         raise ValueError("'txt' files (e.g. '{}') do not all exist.".format(input_fnames[0]))
 
     # Output filenames for hdf5 data
-    output_fnames = [GET_DETAILS_ORGANIZED_FILENAME(run, snap, type='hdf5', output_dir=output_dir)
-                     for snap in range(NUM_SNAPS)]
+    output_fnames = [
+        constants.GET_DETAILS_ORGANIZED_FILENAME(run, snap, type='hdf5', output_dir=output_dir)
+        for snap in range(num_snaps)]
 
     tot_num_entries = 0
     beg = datetime.now()
     # Iterate over all files (note some at early snapshots are empty)
-    for snap in range(NUM_SNAPS):
+    for snap in range(num_snaps):
         with open(input_fnames[snap], 'r') as tfile, h5py.File(output_fnames[snap], 'w') as h5file:
             # Load details data (in proper numerical forms) from ASCII File
             id, scale, mass, mdot, rho, cs = _load_details_txt(tfile)
@@ -321,24 +323,29 @@ def combine_downsample_and_mergers_hdf5(run, verbose=True, error_in_aft=False, o
 
     """
     print(" - - Combining and down-sampling details and identifying merger-related entries.")
+    # Load scalefactor (time) for each snapshot (rounded)
+    num_snaps, target_scales = constants.get_illustris_metadata(
+        run, [META.NUM_SNAPS, META.SUBB_SNAP_TIMES])
+
     git_vers = constants._get_git()
     # Input hdf5 detaisl filenames
-    input_fnames = [GET_DETAILS_ORGANIZED_FILENAME(run, snap, type='hdf5', output_dir=output_dir)
-                    for snap in range(NUM_SNAPS)]
+    input_fnames = [
+        constants.GET_DETAILS_ORGANIZED_FILENAME(run, snap, type='hdf5', output_dir=output_dir)
+        for snap in range(num_snaps)]
     # Make sure they all, already exist
-    if not _all_exist(input_fnames):
+    if not constants._all_exist(input_fnames):
         raise RuntimeError("Organized details files dont exist (e.g. '{}')".format(input_fnames[0]))
 
-    mdet_fname = GET_MERGERS_DETAILS_FILENAME(run, output_dir=output_dir)
-    dets_fname = GET_PUBLIC_DETAILS_FILENAME(run, output_dir=output_dir)
+    mdet_fname = constants.GET_MERGERS_DETAILS_FILENAME(run, output_dir=output_dir)
+    dets_fname = constants.GET_PUBLIC_DETAILS_FILENAME(run, output_dir=output_dir)
 
     # Load times (scale-factors) corresponding to subbox output, these are higher resolution
     #    output times at which we'll store details entries.
-    target_scales = GET_SUBBOX_TIMES(run)
+    # target_scales = GET_SUBBOX_TIMES(run)
     if verbose: print(" - - {} Target times.".format(target_scales.size))
 
     # Load mergers data
-    mergers_fname = GET_MERGERS_COMBINED_FILENAME(
+    mergers_fname = constants.GET_MERGERS_COMBINED_FILENAME(
         run, filtered=True, type='hdf5', output_dir=output_dir)
     with h5py.File(mergers_fname, 'r') as mergs_in:
         mscales = mergs_in[MERGERS.SCALE][:]      # Scalefactors of mergers
@@ -373,7 +380,7 @@ def combine_downsample_and_mergers_hdf5(run, verbose=True, error_in_aft=False, o
     beg_all = datetime.now()
     count = 0
     match_count = {val: 0 for val in _MTYPE._VALS()}
-    for snap in range(NUM_SNAPS):
+    for snap in range(num_snaps):
         # for snap in range(128, 134):
         with h5py.File(input_fnames[snap], 'r') as h5file_in:
             s_num_entries = h5file_in['Header'].attrs['num_entries']
@@ -384,7 +391,7 @@ def combine_downsample_and_mergers_hdf5(run, verbose=True, error_in_aft=False, o
             # Find BH IDs in next snapshot ('None' if this is the last snapshot); used for:
             #    a) Make sure we have the last detail entry for each BH,
             #    b) Handle merger events near snapshots (and thus at file boundaries)
-            if snap < NUM_SNAPS-1:
+            if snap < num_snaps-1:
                 with h5py.File(input_fnames[snap+1], 'r') as next_h5file:
                     next_q_ids = next_h5file[DETAILS.UNIQUE_IDS][:]
             else:
@@ -514,9 +521,8 @@ def combine_downsample_and_mergers_hdf5(run, verbose=True, error_in_aft=False, o
             n_one = len(snap_mergers_one)
             n_both = len(snap_mergers_both)
             print(" - - {:3d} after {}: Lines = {:.3e}, Blackholes = {:.3e}"
-                  ", Mergers = {:3d}, {:3d} (one, both)".format(snap, datetime.now()-beg_all,
-                                                                count, num_det_ids,
-                                                                n_one, n_both))
+                  ", Mergers = {:3d}, {:3d} (one, both)".format(
+                      snap, datetime.now()-beg_all, count, num_det_ids, n_one, n_both))
 
     # Process and Save all data
     # =========================
