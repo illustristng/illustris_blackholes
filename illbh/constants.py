@@ -1,5 +1,6 @@
 """
 """
+from datetime import datetime
 from glob import glob
 import h5py
 import numpy as np
@@ -7,70 +8,13 @@ import os
 import shutil
 import warnings
 
-NUM_SNAPS = 136
+__version__ = '1.0'
 
-_ILLUSTRIS_DETAILS_FILENAME_REGEX = "blackhole_details_*.txt"
-
-_ILLUSTRIS_MERGERS_FILENAME_REGEX = "blackhole_mergers_*.txt"
-
-_ILLUSTRIS_DETAILS_DIRS = {3: "/n/ghernquist/Illustris/Runs/L75n455FP/"
-                              "output/blackhole_details/",
-
-                           2: "/n/ghernquist/Illustris/Runs/L75n910FP/"
-                              "combined_output/blackhole_details/",
-
-                           1: ["/n/ghernquist/Illustris/Runs/L75n1820FP/"
-                               "txt-files/txtfiles_new/txt-files-curie/blackhole_details/",
-
-                               "/n/ghernquist/Illustris/Runs/L75n1820FP/"
-                               "txt-files/txtfiles_new/txt-files-supermuc/blackhole_details/",
-
-                               "/n/ghernquist/Illustris/Runs/L75n1820FP/"
-                               "txt-files/txtfiles_new/txt-files-partial/Aug8/blackhole_details/",
-
-                               "/n/ghernquist/Illustris/Runs/L75n1820FP/"
-                               "txt-files/txtfiles_new/txt-files-partial/Aug14/blackhole_details/",
-
-                               "/n/ghernquist/Illustris/Runs/L75n1820FP/"
-                               "txt-files/txtfiles_new/txt-files-partial/Oct10/blackhole_details/",
-
-                               "/n/ghernquist/Illustris/Runs/L75n1820FP/"
-                               "txt-files/txtfiles_new/txt-files-partial/Sep25/blackhole_details/"]
-                           }
-
-_ILLUSTRIS_MERGERS_DIRS = {3: "/n/ghernquist/Illustris/Runs/L75n455FP/"
-                              "output/blackhole_mergers/",
-
-                           2: "/n/ghernquist/Illustris/Runs/L75n910FP/"
-                              "combined_output/blackhole_mergers/",
-
-                           1: ["/n/ghernquist/Illustris/Runs/L75n1820FP/"
-                               "txt-files/txtfiles_new/txt-files-curie/blackhole_mergers/",
-
-                               "/n/ghernquist/Illustris/Runs/L75n1820FP/"
-                               "txt-files/txtfiles_new/txt-files-supermuc/blackhole_mergers/",
-
-                               "/n/ghernquist/Illustris/Runs/L75n1820FP/"
-                               "txt-files/txtfiles_new/txt-files-partial/Aug8/blackhole_mergers/",
-
-                               "/n/ghernquist/Illustris/Runs/L75n1820FP/"
-                               "txt-files/txtfiles_new/txt-files-partial/Aug14/blackhole_mergers/",
-
-                               "/n/ghernquist/Illustris/Runs/L75n1820FP/"
-                               "txt-files/txtfiles_new/txt-files-partial/Sep25/blackhole_mergers/",
-
-                               "/n/ghernquist/Illustris/Runs/L75n1820FP/"
-                               "txt-files/txtfiles_new/txt-files-partial/Oct10/blackhole_mergers/"]
-                           }
+_ILLUSTRIS_OUTPUT_DIR_BASE = "/n/ghernquist/Illustris/Runs/{:s}/output/"
 
 _ILLUSTRIS_RUN_NAMES   = {1: "L75n1820FP",
                           2: "L75n910FP",
                           3: "L75n455FP"}
-
-_ILLUSTRIS_SUBBOX_TIMES_FILENAMES = \
-    "/n/ghernquist/Illustris/Runs/{:s}/postprocessing/subboxes_times.txt"
-
-_SNAPSHOT_COSMOLOGY_DATA_FILENAME = "illustris-snapshot-cosmology-data.npz"
 
 _ROOT_OUTPUT_DIR = "/n/home00/lkelley/ghernquistfs1/illustris/data/{:s}/"
 _OUTPUT_DETAILS_DIR = "blackholes/details/"
@@ -84,6 +28,8 @@ _OUTPUT_MERGERS_COMBINED_FILENAME = "ill-{:d}_blackhole_mergers_combined_{:s}.{:
 _OUTPUT_MERGERS_DETAILS_FILENAME = "ill-{:d}_blackhole_merger_details.hdf5"
 
 _PUBLIC_MERGERS_FILENAME = "ill-{:d}_blackhole_mergers.hdf5"
+
+_ILLUSTRIS_METADATA_FILENAME = "aux_data/ill-{:d}_metadata.hdf5"
 
 # Precision when comparing between scale-factors
 _DEF_SCALE_PRECISION = -8
@@ -129,6 +75,17 @@ class MERGERS:
     DET_MDOT = 'details/' + DETAILS.MDOT
     DET_RHO = 'details/' + DETAILS.RHO
     DET_CS = 'details/' + DETAILS.CS
+
+
+class META:
+    NUM_SNAPS = 'num_snaps'
+    SNAP_TIMES = 'snap_times'
+    SUBB_NUM_SNAPS = 'subbox_subbox_snaps'
+    SUBB_SNAP_TIMES = 'subbox_snap_times'
+    MERGERS_FILENAMES = 'mergers_filenames'
+    DETAILS_FILENAMES = 'details_filenames'
+    NUM_MERGERS_FILES = 'num_mergers_files'
+    NUM_DETAILS_FILES = 'num_details_files'
 
 
 def _all_exist(files):
@@ -207,58 +164,165 @@ def GET_PUBLIC_MERGERS_FILENAME(run, output_dir=None):
     return fname
 
 
-def GET_ILLUSTRIS_BH_DETAILS_FILENAMES(run):
-    file_paths = np.atleast_1d(_ILLUSTRIS_DETAILS_DIRS[run])
-    det_files = []
-    for fdir in file_paths:
-        file_regex = os.path.join(fdir, _ILLUSTRIS_DETAILS_FILENAME_REGEX)
-        match_files = sorted(glob(file_regex))
-        det_files += match_files
+def get_illustris_metadata(run, keys):
+    """Load data corresponding to `keys` from the appropriate illustris metadata file.
 
-    return det_files
+    First make sure the metadata file exists, and is the current version.
+    """
+    keys = np.atleast_1d(keys)
+    meta_fname = _ILLUSTRIS_METADATA_FILENAME.format(run)
+
+    reload = False
+    results = []
+    if not os.path.isfile(meta_fname):
+        warnings.warn("Metadata for Illustris-{:d} does not exist.  Recreating.".format(run))
+        reload = True
+    else:
+        with h5py.File(meta_fname, 'r') as meta_hdf5:
+            meta_vers = meta_hdf5['Header'].attrs['script_version']
+            # Make sure metafile is up to date
+            if meta_vers != __version__:
+                warnings.warn("Metadata file '{}' is out of date (v: '{}').  Recreating.".format(
+                    meta_fname, meta_vers))
+                reload = True
+
+            # Load data
+            else:
+                for key in keys:
+                    results.append(meta_hdf5[key].value)
+
+    if reload:
+        _load_illustris_metadata(run)
+        with h5py.File(meta_fname, 'r') as meta_hdf5:
+            for key in keys:
+                results.append(meta_hdf5[key].value)
+
+    if keys.size == 1:
+        return results[0]
+
+    return results
 
 
-def GET_ILLUSTRIS_BH_MERGERS_FILENAMES(run):
-    files_dir = np.atleast_1d(_ILLUSTRIS_MERGERS_DIRS[run])
-    files = []
-    for fdir in files_dir:
-        filesNames = os.path.join(fdir, _ILLUSTRIS_MERGERS_FILENAME_REGEX)
-        someFiles = sorted(glob(filesNames))
-        files += someFiles
-    return files
+def _load_illustris_metadata(run):
+    beg_all = datetime.now()
+    # /n/ghernquist/Illustris/Runs/{:s}/output/ ==> /n/ghernquist/Illustris/Runs/L75n1820FP/output/
+    ill_dir = _ILLUSTRIS_OUTPUT_DIR_BASE.format(_ILLUSTRIS_RUN_NAMES[run])
+    meta_fname = _ILLUSTRIS_METADATA_FILENAME.format(run)
+    # Make sure path to save meta-files exists
+    _check_path(meta_fname)
+    print("Illustris directory: '{}'".format(ill_dir))
 
+    # Get number of Snapshots, and Snapshot Times
+    # -------------------------------------------
+    beg = datetime.now()
+    snap_dirs = sorted(glob(os.path.join(ill_dir, 'snapdir_*')))
+    num_snaps = len(snap_dirs)
+    snap_scales = np.zeros(num_snaps, dtype=DTYPE.SCALAR)
+    # Get scalefactors of each snapshot
+    for ii, sdir in enumerate(snap_dirs):
+        regex = os.path.join(sdir, 'snap_*.0.hdf5')
+        fname = glob(regex)
+        if len(fname) != 1:
+            raise RuntimeError("Wrong number of matches for '{}'".format(regex))
+        with h5py.File(fname[0], 'r') as snap_hdf5:
+            snap_scales[ii] = snap_hdf5['Header'].attrs['Time']
 
-def GET_SNAPSHOT_SCALES(round=True):
-    fname = str(_SNAPSHOT_COSMOLOGY_DATA_FILENAME)
-    if not os.path.isfile(fname):
-        raise ValueError("Snapshot scales file '{}' is invalid".format(fname))
-    data = np.load(fname)
+    snap_scales = np.sort(snap_scales)
+    print("Num Snaps: {}; after {}".format(num_snaps, datetime.now()-beg))
 
-    # Load scalefactor (time) for each snapshot
-    snap_scales = data['scale']
-    # Round snapshot scales to desired precision
-    if round:
-        snap_scales = np.around(snap_scales, -_DEF_SCALE_PRECISION)
-    return snap_scales
+    # Get Subbox Snapshot Times
+    # -------------------------
+    beg = datetime.now()
+    regex = os.path.join(ill_dir, 'subbox0/snapdir_subbox0_*')
+    subb_snap_dirs = sorted(glob(regex))
+    subb_num_snaps = len(subb_snap_dirs)
+    # For Illustris-3, subbox snapshots are right in the root directory
+    if subb_num_snaps == 0:
+        regex = os.path.join(ill_dir, 'subbox0/snap_subbox0_*.hdf5')
+        subb_snaps = sorted(glob(regex))
+        subb_num_snaps = len(subb_snaps)
+        subb_snap_scales = np.zeros(subb_num_snaps, dtype=DTYPE.SCALAR)
+        # Get scalefactors of each snapshot
+        for ii, fname in enumerate(subb_snaps):
+            with h5py.File(fname, 'r') as snap_hdf5:
+                subb_snap_scales[ii] = snap_hdf5['Header'].attrs['Time']
 
+    else:
+        subb_snap_scales = np.zeros(subb_num_snaps, dtype=DTYPE.SCALAR)
+        # Get scalefactors of each snapshot
+        for ii, sdir in enumerate(subb_snap_dirs):
+            regex = os.path.join(sdir, 'snap_subbox0_*.0.hdf5')
+            fname = glob(regex)
+            if len(fname) != 1:
+                raise RuntimeError("Wrong number of matches for '{}'".format(regex))
+            with h5py.File(fname[0], 'r') as snap_hdf5:
+                subb_snap_scales[ii] = snap_hdf5['Header'].attrs['Time']
 
-def GET_SUBBOX_TIMES(run):
-    # /n/ghernquist/Illustris/Runs/%s/postprocessing/subboxes_times.txt
-    times_fname = _ILLUSTRIS_SUBBOX_TIMES_FILENAMES.format(_ILLUSTRIS_RUN_NAMES[run])
-    if not os.path.isfile(times_fname):
-        raise ValueError("Subbox times file '{}' does not exist.".format(times_fname))
+    subb_snap_scales = np.sort(subb_snap_scales)
+    print("Num subbox snaps: {}; after {}".format(subb_num_snaps, datetime.now()-beg))
 
-    times = np.zeros(int(4e4))
-    count = 0
-    for line in open(times_fname, 'r'):
-        num, scale = line.split(" ")
-        times[int(num)] = float(scale)
-        if int(num) != count:
-            raise RuntimeError("Something went wrong.  count = {}, line = '{}'".format(count, line))
-        count += 1
+    # Get all mergers and details file-names
+    # --------------------------------------
+    beg = datetime.now()
+    details_fnames = []
+    mergers_fnames = []
+    dets_regex = "blackhole_details/blackhole_details_*.txt"
+    mrgs_regex = "blackhole_mergers/blackhole_mergers_*.txt"
+    exclude = ['setup', 'code', 'Arepo', 'trees']
 
-    times = times[:count]
-    return times
+    def test_dir(path):
+        if path in exclude:
+            return False
+        if path.startswith('groups'):
+            return False
+        if path.startswith('snapdir'):
+            return False
+        if path.startswith('subbox'):
+            return False
+        return True
+
+    for dir_name, subdirs, files in os.walk(ill_dir):
+        # Modify `subdirs` *in-place* to ignore directories in walk
+        subdirs[:] = [sd for sd in subdirs if test_dir(sd)]
+        print(dir_name)
+        if "blackhole_details" in subdirs:
+            details_fnames += glob(os.path.join(dir_name, dets_regex))
+            print("\t", details_fnames[-1])
+            subdirs[:] = [sd for sd in subdirs if sd != "blackhole_details"]
+
+        if "blackhole_mergers" in subdirs:
+            mergers_fnames += glob(os.path.join(dir_name, mrgs_regex))
+            print("\t", mergers_fnames[-1])
+            subdirs[:] = [sd for sd in subdirs if sd != "blackhole_mergers"]
+
+    mergers_fnames = np.array(sorted([mf.encode("ascii", "ignore") for mf in mergers_fnames]))
+    num_mergers_files = len(mergers_fnames)
+    details_fnames = np.array(sorted([df.encode("ascii", "ignore") for df in details_fnames]))
+    num_details_files = len(details_fnames)
+    print("Found {} mergers files, {} details files; after {}".format(
+        num_mergers_files, num_details_files, datetime.now()-beg))
+
+    print("Saving metadata to '{}'".format(meta_fname))
+    with h5py.File(meta_fname, 'w') as meta_hdf5:
+        head = meta_hdf5.create_group('Header')
+        head.attrs['script'] = str(__file__)
+        head.attrs['script_version'] = str(__version__)
+        head.attrs['git_version'] = str(_get_git())
+        head.attrs['created'] = str(datetime.now().ctime())
+        head.attrs['simulation'] = 'Illustris-{}'.format(run)
+
+        meta_hdf5[META.NUM_SNAPS] = num_snaps
+        meta_hdf5[META.SNAP_TIMES] = snap_scales
+        meta_hdf5[META.SUBB_NUM_SNAPS] = subb_num_snaps
+        meta_hdf5[META.SUBB_SNAP_TIMES] = subb_snap_scales
+        meta_hdf5[META.MERGERS_FILENAMES] = mergers_fnames
+        meta_hdf5[META.DETAILS_FILENAMES] = details_fnames
+        meta_hdf5[META.NUM_MERGERS_FILES] = num_mergers_files
+        meta_hdf5[META.NUM_DETAILS_FILES] = num_details_files
+
+    fsize = os.path.getsize(meta_fname)/1024/1024
+    print("'{}' complete after {}, size: {} MB".format(meta_fname, datetime.now()-beg_all, fsize))
+    return
 
 
 def _backup_exists(fname, verbose=True, append='.bak'):
@@ -301,3 +365,26 @@ def _check_path(fpath):
     if not os.path.isdir(head):
         raise RuntimeError("Path '{}' (from '{}') is invalid!".format(head, fpath))
     return
+
+
+def scale_to_age_flat(scales):
+    """Calculate age of the universe [sec] at the given redshift (assuming flat cosmology).
+
+    Analytical formula from Peebles, p.317, eq 13.2.
+    """
+    is_scalar = np.isscalar(scales)
+    redshifts = (1.0/np.atleast_1d(scales)) - 1.0
+
+    ages = np.zeros(redshifts.size, dtype='float32')
+
+    H0_kmsMpc = 70.0
+    omega_m = 0.2726
+
+    arcsinh_arg = np.sqrt((1-omega_m)/omega_m) * (1+redshifts)**(-3.0/2.0)
+    ages = 2 * np.arcsinh(arcsinh_arg) / (H0_kmsMpc * 3 * np.sqrt(1-omega_m))
+    ages *= 3.085678e+19   # Seconds
+
+    if is_scalar:
+        ages = ages[0]
+
+    return ages
