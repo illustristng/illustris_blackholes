@@ -14,7 +14,7 @@ This module compiles and processes the raw black hole (BH) output files from the
 
 Two primary output files are produced for each the details and mergers respectively.  
 
--   **Details**: `ill-[N]_blackhole_details.hdf5` (for illustris simulation number `N`)
+-   **Details**: `ill-[I]_blackhole_details.hdf5` (for illustris simulation number `I`)
 
         'Header'
             'script' : Filename of the generating script (`illbh.details.py`)
@@ -39,7 +39,7 @@ Two primary output files are produced for each the details and mergers respectiv
         'rho' : (N,) float64 - local gas density
         'cs' : (N,) float64 - local gas sound-speed
 
--   **Mergers**: `ill-[N]_blackhole_mergers.hdf5` (for illustris simulation number `N`)
+-   **Mergers**: `ill-[I]_blackhole_mergers.hdf5` (for illustris simulation number `I`)
 
         'Header'
             'script' : Filename of the generating script (`illbh.mergers.py`)
@@ -48,13 +48,18 @@ Two primary output files are produced for each the details and mergers respectiv
             'created' : Time of file creation
             'simulation' : Illustris simulation number
             'target_times' : The times (scale-factors) which were the targets for details entries
-            'num_mergers' : The total number of mergers stored
-            'num_blackholes' : The total number of unique BH participating in mergers
+            'num_mergers' : The total number of mergers stored `N`
+            'num_blackholes' : The total number of unique BH participating in mergers `M`
             'description' : A description of the data
             'unique_ids' : The ID numbers of all unique BH participating in mergers
             
-        'tree' : Information describing the BH merger tree.  If one of the below events does not exist, 
-                 the value in the array is '-1', NOTE: not zero.
+        'tree' : Information describing the BH merger tree.  If one of the below events does not  
+                 exist, the value in the array is '-1', NOTE: not zero.  
+                 For example, if ``next[123] = 345``, then merger `345` is the next merger that  
+                 the BH remnant from merger `123` is involved in.  If, ``prev_in[345] == 123``,  
+                 and, ``prev_out[345] = -1``,  then the `123` merger remnant is the 'in' BH of  
+                 merger `345`, and the other BH of that merger was never in a previous merger  
+                 (hence a 'prev' value of '-1').  
             'next' (N,) int - The index number of the next merger this remnant takes part in.
             'prev_in' (N,) int - The index number of the previous merger this 'in' BH was part of.
             'prev_out' (N,) int - The index number of the previous merger this 'out' BH was part of. 
