@@ -17,6 +17,7 @@ _ILLUSTRIS_OUTPUT_DIR_BASE = "/n/ghernquist/Illustris/Runs/{:s}/"  # output/"
 def main():
     beg_time = datetime.now()
     args, output_dir, input_dir = load_args()
+    num_snaps = constants.get_illustris_metadata(args.run, constants.META.NUM_SNAPS)
 
     # Say Hello
     if args.verbose:
@@ -42,21 +43,21 @@ def main():
     if args.verbose:
         print("\nProcessing Details")
     # Organize details entries by snapshot, in txt files
-    details_organized_txt_good = _check_details_organized_txt
+    details_organized_txt_good = _check_details_organized_txt(args, output_dir, num_snaps)
     if args.refresh_all or not details_organized_txt_good:
         if args.verbose:
             print(" - Organizing Details by snapshot, as 'txt'")
         details.organize_txt_by_snapshot(args.run, verbose=args.verbose, output_dir=output_dir)
-    if not _check_details_organized_txt(args, output_dir):
+    if not _check_details_organized_txt(args, output_dir, num_snaps):
         raise RuntimeError("Details organized by snapshot ('txt') are not okay!")
 
     # Convert txt files to hdf5 files
-    details_organized_hdf5_good = _check_details_organized_hdf5(args, output_dir)
+    details_organized_hdf5_good = _check_details_organized_hdf5(args, output_dir, num_snaps)
     if args.refresh_all or not details_organized_hdf5_good:
         if args.verbose:
             print("\n - Converting Details by snapshot to 'hdf5'")
         details.convert_txt_to_hdf5(args.run, verbose=args.verbose, output_dir=output_dir)
-    if not _check_details_organized_hdf5(args, output_dir):
+    if not _check_details_organized_hdf5(args, output_dir, num_snaps):
         raise RuntimeError("Details organized by snapshot ('hdf5') are not okay!")
 
     # Downsample details and find merger-details
@@ -105,15 +106,6 @@ def load_args(args=None):
 
     args = parser.parse_args(args=args)
 
-    # Setup Output Directory
-    output_dir = args.output_dir
-    if output_dir is None:
-        output_dir = os.path.join(os.path.abspath(_DEF_OUTPUT_DIR), args.run, '')
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-    if not os.path.isdir(output_dir):
-        raise ValueError("`output_dir` '{}' is invalid.".format(output_dir))
-
     # Setup input directory
     input_dir = args.input_dir
     if input_dir is None:
@@ -133,6 +125,15 @@ def load_args(args=None):
             input_dir = expand_input_dir
         else:
             raise ValueError("Could not find an 'output' directory")
+
+    # Setup Output Directory
+    output_dir = args.output_dir
+    if output_dir is None:
+        output_dir = os.path.join(os.path.abspath(_DEF_OUTPUT_DIR), args.run, '')
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    if not os.path.isdir(output_dir):
+        raise ValueError("`output_dir` '{}' is invalid.".format(output_dir))
 
     return args, output_dir, input_dir
 
@@ -157,20 +158,20 @@ def _check_mergers_combined(args, output_dir):
     return is_good
 
 
-def _check_details_organized_txt(args, output_dir):
+def _check_details_organized_txt(args, output_dir, num_snaps):
     output_fnames = \
         [constants.GET_DETAILS_ORGANIZED_FILENAME(args.run, snap, type='txt', output_dir=output_dir)
-         for snap in range(constants.NUM_SNAPS)]
+         for snap in range(num_snaps)]
     is_good = np.all([os.path.exists(ofn) for ofn in output_fnames])
     if args.verbose:
         print(" - Files '{}'... all exist: {}".format(output_fnames[0], is_good))
     return is_good
 
 
-def _check_details_organized_hdf5(args, output_dir):
+def _check_details_organized_hdf5(args, out_dir, num_snaps):
     output_fnames = \
-        [constants.GET_DETAILS_ORGANIZED_FILENAME(args.run, snap, type='hdf5', output_dir=output_dir)
-         for snap in range(constants.NUM_SNAPS)]
+        [constants.GET_DETAILS_ORGANIZED_FILENAME(args.run, snap, type='hdf5', output_dir=out_dir)
+         for snap in range(num_snaps)]
     is_good = np.all([os.path.exists(ofn) for ofn in output_fnames])
     if is_good:
         is_current = np.all([details._check_version(ofn) for ofn in output_fnames])
