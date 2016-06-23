@@ -97,7 +97,7 @@ def load_args(args=None):
 
     parser.add_argument('--output', dest='output_dir', default=None,
                         help="Destination directory for output "
-                             "(Default: './[RUN]/').")
+                             "(Default: a directory called '[RUN]' will be created in './').")
     parser.add_argument('--run_dir', dest='input_dir', default=None,
                         help="Directory in which to find the target `run` "
                              "(Default: '/n/ghernquist/Illustris/Runs/').")
