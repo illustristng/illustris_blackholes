@@ -30,7 +30,7 @@ _DEF_SCALE_PRECISION = -8
 
 class DTYPE:
     ID     = np.uint64
-    SCALAR = np.float64
+    SCALAR = np.float32
     INDEX  = np.int64
 
 
