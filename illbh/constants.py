@@ -342,7 +342,7 @@ def _get_git():
     """Get a string representing the current git status --- i.e. tag and commit hash.
     """
     import subprocess
-    git_vers = subprocess.getoutput(["git describe --always"]).strip()
+    git_vers = subprocess.check_output(["git describe --always"],shell=True).strip()
     return git_vers
 
 
