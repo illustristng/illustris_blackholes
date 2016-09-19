@@ -17,7 +17,7 @@ _ILLUSTRIS_OUTPUT_DIR_BASE = "/n/ghernquist/Illustris/Runs/{:s}/"  # output/"
 def main():
     beg_time = datetime.now()
     args, output_dir, input_dir = load_args()
-    num_snaps = constants.get_illustris_metadata(args.run, constants.META.NUM_SNAPS)
+    num_snaps = constants.get_illustris_metadata(args.run, ['num_snaps'], input_dir)
 
     # Say Hello
     if args.verbose:

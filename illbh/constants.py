@@ -183,7 +183,7 @@ def get_illustris_metadata(run, keys, input_dir=None):
                     results.append(meta_hdf5[key].value)
 
     if reload:
-        _load_illustris_metadata(run)
+        _load_illustris_metadata(run, input_dir)
         with h5py.File(meta_fname, 'r') as meta_hdf5:
             for key in keys:
                 results.append(meta_hdf5[key].value)
