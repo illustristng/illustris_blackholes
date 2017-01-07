@@ -636,7 +636,7 @@ def combine_downsample_and_mergers_hdf5(run, verbose=True, error_in_aft=False, o
     num_mdet_ids = 0
     try:
         all_merger_ids = set(m_ids_in).union(m_ids_out)
-        all_mdet_ids = set(md_id[:, 0]).union(md_id[:, 1]).union(md_id[:, 2]) - 0
+        all_mdet_ids = set(md_id[:, 0]).union(md_id[:, 1]).union(md_id[:, 2]) - set(0)
         num_merger_ids = len(all_merger_ids)
         num_mdet_ids = len(all_mdet_ids)
         extra_ids = all_mdet_ids - all_merger_ids
