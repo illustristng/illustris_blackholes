@@ -401,6 +401,9 @@ def combine_downsample_and_mergers_hdf5(run, verbose=True, error_in_aft=False, o
             last = h5file_in['Header'].attrs['time_last']
             targets = target_scales[(target_scales >= first) & (target_scales <= last)]
 
+            if len(targets) == 0:
+                continue
+
             # Load unique BH information
             q_ids = h5file_in[DETAILS.UNIQUE_IDS]
             q_first = h5file_in[DETAILS.UNIQUE_FIRST]
